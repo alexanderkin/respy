@@ -42,6 +42,8 @@ SUBROUTINE record_simulation_start(num_agents_sim, seed_sim, file_sim)
 ! Algorithm
 !------------------------------------------------------------------------------
 
+    IF(TRIM(file_sim) == '') RETURN
+
     100 FORMAT(2x,A32,1x,i8,1x,A16,1x,i8)
 
     OPEN(NEWUNIT=u, FILE=TRIM(file_sim)//'.respy.sim', ACTION='WRITE')
@@ -68,6 +70,8 @@ SUBROUTINE record_simulation_stop(file_sim)
 ! Algorithm
 !------------------------------------------------------------------------------
 
+    IF(TRIM(file_sim) == '') RETURN
+
     OPEN(NEWUNIT=u, FILE=TRIM(file_sim)//'.respy.sim', POSITION='APPEND', ACTION='WRITE')
 
         WRITE(u, *) ' ... finished'
@@ -93,6 +97,8 @@ SUBROUTINE record_simulation_progress(i, file_sim)
 !------------------------------------------------------------------------------
 ! Algorithm
 !------------------------------------------------------------------------------
+
+    IF(TRIM(file_sim) == '') RETURN
 
     IF ((i .NE. zero_int) .AND. (MOD(i, 100) == zero_dble)) THEN
 
