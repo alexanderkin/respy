@@ -304,8 +304,9 @@ SUBROUTINE fort_backward_induction(periods_emax, num_periods, is_myopic, max_sta
 
     !/* internals objects       */
 
+    INTEGER(our_int), ALLOCATABLE       :: seed_inflated(:)
+
     INTEGER(our_int)                    :: num_states
-    INTEGER(our_int)                    :: seed_inflated(15)
     INTEGER(our_int)                    :: seed_size
     INTEGER(our_int)                    :: period
     INTEGER(our_int)                    :: info
@@ -345,9 +346,11 @@ SUBROUTINE fort_backward_induction(periods_emax, num_periods, is_myopic, max_sta
         RETURN
     END IF
 
-    seed_inflated(:) = 123
 
     CALL RANDOM_SEED(size=seed_size)
+
+    ALLOCATE(seed_inflated(seed_size))
+    seed_inflated(:) = 123
 
     CALL RANDOM_SEED(put=seed_inflated)
 
