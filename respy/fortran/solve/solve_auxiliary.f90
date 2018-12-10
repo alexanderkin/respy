@@ -251,7 +251,7 @@ SUBROUTINE fort_calculate_rewards_systematic(periods_rewards_systematic, num_per
             ! Calculate systematic part of HOME
             covars_home(1) = one_int
             covars_home(2) = covariates%is_young_adult
-            covars_home(3) = covariates%is_adult
+            covars_home(3) = covariates%period - one_int
 
             rewards(4) = DOT_PRODUCT(covars_home, optim_paras%coeffs_home)
 
