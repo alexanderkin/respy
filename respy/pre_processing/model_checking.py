@@ -121,50 +121,55 @@ def check_model_attributes(attr_dict):
     # Check that all parameter values are within the bounds.
     x = get_optim_paras(a["optim_paras"], a["num_paras"], "all", True)
 
+    # TODO: This needs to be removed so I can use the new respy_smm design of the initialization
+    #  file, where we rely on specified standard deviations and coefficient of correlations
+    #  instead. All handling of constraints during optimization (e.g. fixed or bounded) is solely
+    #  instead. All handling of constraints during optimization (e.g. fixed or bounded) is solely
+    #  handled by the optimizer.
     # It is not clear at this point how to impose parameter constraints on
     # the covariance matrix in a flexible manner. So, either all fixed or
     # none. As a special case, we also allow for all off-diagonal elements
     # to be fixed to zero.
-    shocks_coeffs = a["optim_paras"]["shocks_cholesky"][np.tril_indices(4)]
-    shocks_fixed = a["optim_paras"]["paras_fixed"][43:53]
-
-    all_fixed = all(is_fixed is False for is_fixed in shocks_fixed)
-    all_free = all(is_free is True for is_free in shocks_fixed)
-
-    subset_fixed = [shocks_fixed[i] for i in [1, 3, 4, 6, 7, 8]]
-    subset_value = [shocks_coeffs[i] for i in [1, 3, 4, 6, 7, 8]]
-
-    off_diagonal_fixed = all(is_free is True for is_free in subset_fixed)
-    off_diagonal_value = all(value == 0.0 for value in subset_value)
-    off_diagonal = off_diagonal_fixed and off_diagonal_value
-
-    if not (all_free or all_fixed or off_diagonal):
-        raise UserError(" Misspecified constraints for covariance matrix")
-
-    # Discount rate and type shares need to be larger than on at all times.
-    for label in ["paras_fixed", "paras_bounds"]:
-        assert isinstance(a["optim_paras"][label], list)
-        assert len(a["optim_paras"][label]) == a["num_paras"]
-
-    for i in range(1):
-        assert a["optim_paras"]["paras_bounds"][i][0] >= 0.00
-
-    for i in range(a["num_paras"]):
-        lower, upper = a["optim_paras"]["paras_bounds"][i]
-        if lower is not None:
-            assert isinstance(lower, float)
-            assert lower <= x[i]
-            assert abs(lower) < PRINT_FLOAT
-        if upper is not None:
-            assert isinstance(upper, float)
-            assert upper >= x[i]
-            assert abs(upper) < PRINT_FLOAT
-        if (upper is not None) and (lower is not None):
-            assert upper >= lower
-        # At this point no bounds for the elements of the covariance matrix
-        # are allowed.
-        if i in range(43, 53):
-            assert a["optim_paras"]["paras_bounds"][i] == [None, None]
+    # shocks_coeffs = a["optim_paras"]["shocks_cholesky"][np.tril_indices(4)]
+    # shocks_fixed = a["optim_paras"]["paras_fixed"][43:53]
+    #
+    # all_fixed = all(is_fixed is False for is_fixed in shocks_fixed)
+    # all_free = all(is_free is True for is_free in shocks_fixed)
+    #
+    # subset_fixed = [shocks_fixed[i] for i in [1, 3, 4, 6, 7, 8]]
+    # subset_value = [shocks_coeffs[i] for i in [1, 3, 4, 6, 7, 8]]
+    #
+    # off_diagonal_fixed = all(is_free is True for is_free in subset_fixed)
+    # off_diagonal_value = all(value == 0.0 for value in subset_value)
+    # off_diagonal = off_diagonal_fixed and off_diagonal_value
+    #
+    # if not (all_free or all_fixed or off_diagonal):
+    #     raise UserError(" Misspecified constraints for covariance matrix")
+    #
+    # # Discount rate and type shares need to be larger than on at all times.
+    # for label in ["paras_fixed", "paras_bounds"]:
+    #     assert isinstance(a["optim_paras"][label], list)
+    #     assert len(a["optim_paras"][label]) == a["num_paras"]
+    #
+    # for i in range(1):
+    #     assert a["optim_paras"]["paras_bounds"][i][0] >= 0.00
+    #
+    # for i in range(a["num_paras"]):
+    #     lower, upper = a["optim_paras"]["paras_bounds"][i]
+    #     if lower is not None:
+    #         assert isinstance(lower, float)
+    #         assert lower <= x[i]
+    #         assert abs(lower) < PRINT_FLOAT
+    #     if upper is not None:
+    #         assert isinstance(upper, float)
+    #         assert upper >= x[i]
+    #         assert abs(upper) < PRINT_FLOAT
+    #     if (upper is not None) and (lower is not None):
+    #         assert upper >= lower
+    #     # At this point no bounds for the elements of the covariance matrix
+    #     # are allowed.
+    #     if i in range(43, 53):
+    #         assert a["optim_paras"]["paras_bounds"][i] == [None, None]
 
     _check_optimizer_options(a["optimizer_options"])
 

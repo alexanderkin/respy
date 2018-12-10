@@ -366,18 +366,19 @@ def convert_init_dict_to_attr_dict(init_dict):
         if is_defined:
             attr["optimizer_options"][optimizer] = ini[optimizer]
 
+    # TODO: This is also a preparation for the new parameter management.
     # We need to align the indicator for the fixed parameters.
     # In the initialization file, these refer to the upper triangular
     # matrix of the covariances. Inside the  program, we use the lower
     # triangular Cholesky decomposition.
-    paras_fixed = attr["optim_paras"]["paras_fixed"][:]
-
-    paras_fixed_reordered = paras_fixed[:]
-
-    for old, new in _paras_mapping():
-        paras_fixed_reordered[new] = paras_fixed[old]
-
-    attr["optim_paras"]["paras_fixed"] = paras_fixed_reordered
+    # paras_fixed = attr["optim_paras"]["paras_fixed"][:]
+    #
+    # paras_fixed_reordered = paras_fixed[:]
+    #
+    # for old, new in _paras_mapping():
+    #     paras_fixed_reordered[new] = paras_fixed[old]
+    #
+    attr["optim_paras"]["paras_fixed"] = attr["optim_paras"]["paras_fixed"][:]
 
     return attr
 
@@ -446,13 +447,14 @@ def convert_attr_dict_to_init_dict(attr_dict):
     ini["SHOCKS"]["coeffs"] = shocks_coeffs
     ini["SHOCKS"]["bounds"] = attr["optim_paras"]["paras_bounds"][start:stop]
 
+    # TODO: This is also a preparation for the new parameter management.
     # Again we need to reorganize the order of the coefficients
-    paras_fixed_reordered = attr["optim_paras"]["paras_fixed"][:]
-    paras_fixed = paras_fixed_reordered[:]
-    for old, new in _paras_mapping():
-        paras_fixed[old] = paras_fixed_reordered[new]
+    # paras_fixed_reordered = attr["optim_paras"]["paras_fixed"][:]
+    # paras_fixed = paras_fixed_reordered[:]
+    # for old, new in _paras_mapping():
+    #     paras_fixed[old] = paras_fixed_reordered[new]
 
-    ini["SHOCKS"]["fixed"] = paras_fixed[start:stop]
+    ini["SHOCKS"]["fixed"] = attr["optim_paras"]["paras_fixed"][:]
 
     # Solution
     ini["SOLUTION"] = {}
