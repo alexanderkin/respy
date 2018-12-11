@@ -454,7 +454,7 @@ def convert_attr_dict_to_init_dict(attr_dict):
     # for old, new in _paras_mapping():
     #     paras_fixed[old] = paras_fixed_reordered[new]
 
-    ini["SHOCKS"]["fixed"] = attr["optim_paras"]["paras_fixed"][:]
+    ini["SHOCKS"]["fixed"] = attr["optim_paras"]["paras_fixed"][start:stop]
 
     # Solution
     ini["SOLUTION"] = {}
