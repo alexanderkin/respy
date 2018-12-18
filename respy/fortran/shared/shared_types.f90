@@ -103,6 +103,8 @@ MODULE shared_types
         INTEGER(our_int)                :: type
         INTEGER(our_int)                :: edu
 
+        INTEGER(our_int)                :: is_mandatory
+
     END TYPE
 
 !******************************************************************************
