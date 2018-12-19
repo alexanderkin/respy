@@ -79,6 +79,7 @@ def build(ctx):
 
         ctx.recurse('tests/resources')
 
+        ctx.add_post_fun(post)
 
 @conf
 def _configure_debug(self):
@@ -220,3 +221,10 @@ def _construct_end_message(self, is_support):
         self.end_msg('yes', color='GREEN')
     else:
         self.end_msg('no', color='RED')
+
+
+def post(ctx):
+    # TODO: This function needs to be cleaned up and a central location for the F2PY interfaces,
+    #  that will play a more pronounced role going forward, so that they can be imported directly.
+    import shutil
+    shutil.copy('.bld/tests/resources/f2py_interface.so', 'f2py_interface.so')
