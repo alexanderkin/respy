@@ -444,7 +444,7 @@ SUBROUTINE wrapper_create_state_space(states_all_int, states_number_period_int, 
     !/* external objects        */
 
     INTEGER, INTENT(OUT)            :: mapping_state_idx_int(num_periods_int, num_periods_int, num_periods_int, min_idx_int, 4, num_types_int)
-    INTEGER, INTENT(OUT)            :: states_all_int(num_periods_int, 150000, 5)
+    INTEGER, INTENT(OUT)            :: states_all_int(num_periods_int, 500000, 5)
     INTEGER, INTENT(OUT)            :: states_number_period_int(num_periods_int)
     INTEGER, INTENT(OUT)            :: max_states_period_int
 
@@ -476,6 +476,9 @@ SUBROUTINE wrapper_create_state_space(states_all_int, states_number_period_int, 
     edu_spec%max = edu_max
 
     CALL fort_create_state_space(states_all, states_number_period, mapping_state_idx, num_periods_int, num_types, edu_spec)
+
+    ! TODO: This should be handled more elegantly once debugging flags are added to F2PY compilation in build process.
+    IF(max_states_period .GT. SIZE(states_all_int, 2)) STOP 'too large state space, increase of dimension needed'
 
     states_all_int(:, :max_states_period, :) = states_all
     states_number_period_int = states_number_period
