@@ -38,9 +38,18 @@ INADMISSIBILITY_PENALTY = -400000.00
 MISSING_INT = -99
 MISSING_FLOAT = -99.00
 
-# Flags that provide additional information about the exact configuration
-with open(ROOT_DIR + "/.bld/.config", "r") as infile:
-    config_dict = json.load(infile)
+# TODO(janosg): Raises exception if installed on Windows without Fortran.
+try:
+    # Flags that provide additional information about the exact configuration
+    with open(ROOT_DIR + "/.bld/.config", "r") as infile:
+        config_dict = json.load(infile)
+except FileNotFoundError:
+    json_string = (
+        '{"DEBUG": false, "FORTRAN": false, "F2PY": false, "PARALLELISM_MPI": false, '
+        '"PARALLELISM_OMP": false}'
+    )
+    config_dict = json.loads(json_string)
+
 
 IS_DEBUG = config_dict["DEBUG"]
 
@@ -74,7 +83,11 @@ DATA_LABELS_SIM += [
     "General_Reward_2",
     "Common_Reward",
 ]
-DATA_LABELS_SIM += ["Immediate_Reward_1", "Immediate_Reward_2", "Immediate_Reward_3"]
+DATA_LABELS_SIM += [
+    "Immediate_Reward_1",
+    "Immediate_Reward_2",
+    "Immediate_Reward_3",
+]
 DATA_LABELS_SIM += ["Immediate_Reward_4"]
 
 DATA_FORMATS_EST = dict()
