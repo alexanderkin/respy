@@ -176,7 +176,7 @@ def respy_interface(respy_obj, request, data_array=None):
             x_optim_free_unscaled_start, precond_matrix, "do"
         )
 
-        paras_bounds_free_scaled = np.empty((num_free, 2)).fill(np.nan)
+        paras_bounds_free_scaled = np.full((num_free, 2), np.nan)
         for i in range(2):
             paras_bounds_free_scaled[:, i] = apply_scaling(
                 paras_bounds_free_unscaled[:, i], precond_matrix, "do"

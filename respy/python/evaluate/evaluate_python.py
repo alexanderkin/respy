@@ -73,8 +73,8 @@ def pyth_contributions(
     is_deterministic = np.count_nonzero(sc) == 0
 
     # Initialize auxiliary objects
-    contribs = np.empty(num_agents_est).fill(-HUGE_FLOAT)
-    prob_obs = np.empty(num_periods).fill(-HUGE_FLOAT)
+    contribs = np.full(num_agents_est, -HUGE_FLOAT)
+    prob_obs = np.full(num_periods, -HUGE_FLOAT)
 
     # Calculate the probability over agents and time.
     for j in range(num_agents_est):

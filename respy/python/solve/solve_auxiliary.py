@@ -24,14 +24,14 @@ def pyth_create_state_space(num_periods, num_types, edu_spec):
     min_idx = edu_spec["max"] + 1
 
     # Array for possible realization of state space by period
-    states_all = np.empty((num_periods, 100000, 5)).fill(MISSING_INT)
+    states_all = np.full((num_periods, 100000, 5), MISSING_INT)
 
     # Array for the mapping of state space values to indices in variety of matrices.
     shape = (num_periods, num_periods, num_periods, min_idx, 4, num_types)
-    mapping_state_idx = np.empty(shape).fill(MISSING_INT)
+    mapping_state_idx = np.full(shape, MISSING_INT)
 
     # Array for maximum number of realizations of state space by period
-    states_number_period = np.empty(num_periods).fill(MISSING_INT)
+    states_number_period = np.full(num_periods, MISSING_INT)
 
     # Construct state space by periods
     for period in range(num_periods):
@@ -167,10 +167,24 @@ def pyth_calculate_rewards_systematic(
     num_periods, states_number_period, states_all, max_states_period, optim_paras
 ):
     """ Calculate ex systematic rewards.
+
+    Parameters
+    ----------
+    num_periods : int
+        Number of periods
+    states_number_period : np.array
+        Number of states per period.
+    states_all
+        Array with shape (num_periods, max_states_period, num_state_space)
+    max_states_period : int
+        Maximum number states in period
+    optim_paras : dict
+        ???
+
     """
     # Initialize
     shape = (num_periods, max_states_period, 4)
-    periods_rewards_systematic = np.empty(shape).fill(MISSING_FLOAT)
+    periods_rewards_systematic = np.full(shape, MISSING_FLOAT)
 
     # Calculate systematic instantaneous rewards
     for period in reversed(range(num_periods)):
@@ -182,7 +196,7 @@ def pyth_calculate_rewards_systematic(
             exp_a, exp_b, edu, choice_lagged, type_ = states_all[period, k, :]
 
             # Initialize container
-            rewards = np.empty(4).fill(np.nan)
+            rewards = np.full(4, np.nan)
 
             # Construct auxiliary information
             covariates = construct_covariates(
@@ -197,8 +211,7 @@ def pyth_calculate_rewards_systematic(
             # These are defined in a general sense, where not only wages matter.
             wages = calculate_wages_systematic(covariates, optim_paras)
 
-            for j in [0, 1]:
-                rewards[j] = wages[j] + rewards_general[j]
+            rewards[:2] = wages[:2] + rewards_general[:2]
 
             # Calculate systematic part of SCHOOL rewards
             covars_edu = []
@@ -221,12 +234,10 @@ def pyth_calculate_rewards_systematic(
             rewards[3] = np.dot(optim_paras["coeffs_home"], covars_home)
 
             # Now we add the type-specific deviation for SCHOOL and HOME.
-            for j in [2, 3]:
-                rewards[j] = rewards[j] + optim_paras["type_shifts"][type_, j]
+            rewards[2:4] = rewards[2:4] + optim_paras["type_shifts"][type_, 2:4]
 
             # We can now also added the common component of rewards.
-            for j in range(4):
-                rewards[j] = rewards[j] + rewards_common
+            rewards[:4] = rewards[:4] + rewards_common
 
             periods_rewards_systematic[period, k, :] = rewards
 
@@ -258,33 +269,31 @@ def pyth_backward_induction(
     # Initialize containers, which contain a lot of missing values as we capture the
     # tree structure in arrays of fixed dimension.
     i, j = num_periods, max_states_period
-    periods_emax = np.empty((i, j)).fill(MISSING_FLOAT)
+    periods_emax = np.full((i, j), MISSING_FLOAT)
 
     if is_myopic:
         record_solution_progress(-2, file_sim)
 
+        # TODO: Find beautiful way to mask different lengths of rows and set them to 0.
         for period, num_states in enumerate(states_number_period):
             periods_emax[period, :num_states] = 0.0
 
         return periods_emax
 
     # Construct auxiliary objects
-    shocks_cov = np.matmul(
-        optim_paras["shocks_cholesky"], optim_paras["shocks_cholesky"].T
-    )
+    shocks_cov = optim_paras["shocks_cholesky"].dot(optim_paras["shocks_cholesky"].T)
 
     # Auxiliary objects. These shifts are used to determine the expected values of the
     # two labor market alternatives. These are log normal distributed and thus the draws
     # cannot simply set to zero.
     shifts = np.zeros(4)
-    shifts[0] = np.clip(np.exp(shocks_cov[0, 0] / 2.0), 0.0, HUGE_FLOAT)
-    shifts[1] = np.clip(np.exp(shocks_cov[1, 1] / 2.0), 0.0, HUGE_FLOAT)
+    shifts[:2] = np.clip(np.exp(shocks_cov[np.diag_indices(2)] / 2.0), 0.0, HUGE_FLOAT)
 
     # Initialize containers with missing values
-    periods_emax = np.empty((num_periods, max_states_period)).fill(MISSING_FLOAT)
+    periods_emax = np.full((num_periods, max_states_period), MISSING_FLOAT)
 
     # Iterate backward through all periods
-    for period in range(num_periods - 1, -1, -1):
+    for period in reversed(range(num_periods)):
 
         # Extract auxiliary objects
         draws_emax_standard = periods_draws_emax[period, :, :]
@@ -393,7 +402,7 @@ def get_simulated_indicator(num_points_interp, num_candidates, period, is_debug)
     )
 
     # Constructing an indicator whether a state will be simulated or interpolated.
-    is_simulated = np.empty(num_candidates).fill(False)
+    is_simulated = np.full(num_candidates, False)
     is_simulated[interpolation_points] = True
 
     # Check for debugging cases.
@@ -429,8 +438,8 @@ def get_exogenous_variables(
 
     """
     # Construct auxiliary objects
-    exogenous = np.empty((num_states, 9)).fill(np.nan)
-    maxe = np.empty(num_states).fill(np.nan)
+    exogenous = np.full((num_states, 9), np.nan)
+    maxe = np.full(num_states, np.nan)
 
     # Iterate over all states.
     for k in range(num_states):
@@ -484,7 +493,7 @@ def get_endogenous_variable(
 
     """
     # Construct auxiliary objects
-    endogenous_variable = np.empty(num_states).fill(np.nan)
+    endogenous_variable = np.full(num_states, np.nan)
 
     for k in range(num_states):
 
@@ -595,7 +604,7 @@ def calculate_wages_systematic(covariates, optim_paras):
         covars_wages[5] *= 100.00
 
     # Calculate systematic part of wages in OCCUPATION A and OCCUPATION B
-    wages = np.empty(2).fill(np.nan)
+    wages = np.full(2, np.nan)
 
     covars_wages[-2:] = [covariates["any_exp_a"], covariates["work_a_lagged"]]
     wage = np.exp(np.dot(optim_paras["coeffs_a"][:12], covars_wages))
@@ -607,7 +616,6 @@ def calculate_wages_systematic(covariates, optim_paras):
 
     # We need to add the type-specific deviations here as these are part of
     # skill-function component.
-    for j in [0, 1]:
-        wages[j] = wages[j] * np.exp(optim_paras["type_shifts"][covariates["type"], j])
+    wages[:2] = wages[:2] * np.exp(optim_paras["type_shifts"][covariates["type"], :2])
 
     return wages

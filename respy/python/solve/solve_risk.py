@@ -17,6 +17,36 @@ def construct_emax_risk(
     optim_paras,
 ):
     """ Simulate expected future value for a given distribution of the unobservables.
+
+    Parameters
+    ----------
+    num_periods : int
+        Number of periods.
+    num_draws_emax : int
+        Number of draws.
+    period : int
+        Number of period.
+    k : int
+        ???
+    draws_emax_risk : np.array
+        Array with shape (num_draws_emax, num_rewards)
+    rewards_systematic : np.array
+        Array with shape (num_rewards)
+    periods_emax : np.array
+        Array with shape (num_periods, num_individuals???)
+    states_all : np.array
+        Array with shape (num_periods, num_individuals, num_rewards + 1)
+    mapping_state_idx : np.array
+        Array with shape (num_periods, num_periods, num_periods, 21, num_rewards, 1)
+    edu_spec : dict
+        Keys are lagged, start, share, max
+
+
+    Returns
+    -------
+    float
+        ???
+
     """
     # Antibugging
     assert np.all(draws_emax_risk[:, :2] >= 0)
@@ -49,7 +79,7 @@ def construct_emax_risk(
         emax += maximum
 
     # Scaling
-    emax = emax / num_draws_emax
+    emax /= num_draws_emax
 
     # Finishing
     return emax

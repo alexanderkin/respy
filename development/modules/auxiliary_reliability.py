@@ -175,7 +175,6 @@ def get_est_log_info():
             if list_[2] == "Evaluations":
                 num_evals = int(list_[3])
 
-    # Finishing
     return num_evals, num_steps
 
 
@@ -184,7 +183,7 @@ def get_choice_probabilities(fname, is_flatten=True):
     """
 
     # Initialize container.
-    stats = np.empty((0, 4)).fill(np.nan)
+    stats = np.full((0, 4), np.nan)
 
     with open(fname) as in_file:
 

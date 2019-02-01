@@ -38,9 +38,7 @@ def pyth_simulate(
 
     # Standard deviates transformed to the distributions relevant for the agents actual
     # decision making as traversing the tree.
-    periods_draws_sims_transformed = np.empty((num_periods, num_agents_sim, 4)).fill(
-        np.nan
-    )
+    periods_draws_sims_transformed = np.full((num_periods, num_agents_sim, 4), np.nan)
 
     for period in range(num_periods):
         periods_draws_sims_transformed[period, :, :] = transform_disturbances(
@@ -62,7 +60,7 @@ def pyth_simulate(
     count = 0
 
     # Initialize data
-    dataset = np.empty((num_agents_sim * num_periods, 29)).fill(MISSING_FLOAT)
+    dataset = np.full((num_agents_sim * num_periods, 29), MISSING_FLOAT)
 
     for i in range(num_agents_sim):
 

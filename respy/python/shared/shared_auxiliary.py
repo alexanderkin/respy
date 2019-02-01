@@ -1,9 +1,8 @@
 import numpy as np
-
+from numba import njit
 import linecache
 import shlex
 import os
-
 from respy.python.shared.shared_constants import INADMISSIBILITY_PENALTY
 from respy.python.shared.shared_constants import MISSING_FLOAT
 from respy.python.record.record_warning import record_warning
@@ -12,6 +11,7 @@ from respy.python.shared.shared_constants import HUGE_FLOAT
 from respy.python.shared.shared_constants import TINY_FLOAT
 from respy.custom_exceptions import MaxfunError
 from respy.custom_exceptions import UserError
+from respy.python.shared import fast_routines as fr
 
 
 def get_log_likl(contribs):
@@ -34,7 +34,9 @@ def get_log_likl(contribs):
     return -np.mean(np.clip(np.log(contribs), -HUGE_FLOAT, HUGE_FLOAT))
 
 
-def distribute_parameters(paras_vec, is_debug=False, info=None, paras_type="optim"):
+def distribute_parameters(
+    paras_vec, is_debug=False, info=None, paras_type="optim"
+):
     """Parse the parameter vector into a dictionary of model quantities.
 
     Parameters
@@ -107,12 +109,15 @@ def get_optim_paras(paras_dict, num_paras, which, is_debug):
         assert check_model_parameters(paras_dict)
 
     pinfo = paras_parsing_information(num_paras)
-    x = np.empty(num_paras).fill(np.nan)
+    x = np.full(num_paras, np.nan)
 
     start, stop = pinfo["delta"]["start"], pinfo["delta"]["stop"]
     x[start:stop] = paras_dict["delta"]
 
-    start, stop = (pinfo["coeffs_common"]["start"], pinfo["coeffs_common"]["stop"])
+    start, stop = (
+        pinfo["coeffs_common"]["start"],
+        pinfo["coeffs_common"]["stop"],
+    )
     x[start:stop] = paras_dict["coeffs_common"]
 
     start, stop = pinfo["coeffs_a"]["start"], pinfo["coeffs_a"]["stop"]
@@ -127,7 +132,10 @@ def get_optim_paras(paras_dict, num_paras, which, is_debug):
     start, stop = pinfo["coeffs_home"]["start"], pinfo["coeffs_home"]["stop"]
     x[start:stop] = paras_dict["coeffs_home"]
 
-    start, stop = (pinfo["shocks_coeffs"]["start"], pinfo["shocks_coeffs"]["stop"])
+    start, stop = (
+        pinfo["shocks_coeffs"]["start"],
+        pinfo["shocks_coeffs"]["stop"],
+    )
     x[start:stop] = paras_dict["shocks_cholesky"][np.tril_indices(4)]
 
     start, stop = pinfo["type_shares"]["start"], pinfo["type_shares"]["stop"]
@@ -140,7 +148,9 @@ def get_optim_paras(paras_dict, num_paras, which, is_debug):
         _check_optimization_parameters(x)
 
     if which == "free":
-        x = [x[i] for i in range(num_paras) if not paras_dict["paras_fixed"][i]]
+        x = [
+            x[i] for i in range(num_paras) if not paras_dict["paras_fixed"][i]
+        ]
         x = np.array(x)
 
     return x
@@ -181,7 +191,7 @@ def get_conditional_probabilities(type_shares, edu_start):
     """
     # Auxiliary objects
     num_types = int(len(type_shares) / 2)
-    probs = np.empty(num_types).fill(np.nan)
+    probs = np.full(num_types, np.nan)
     for i in range(num_types):
         lower, upper = i * 2, (i + 1) * 2
         covariate = edu_start > 9
@@ -218,7 +228,10 @@ def extract_cholesky(x, info=None):
 
     """
     pinfo = paras_parsing_information(len(x))
-    start, stop = (pinfo["shocks_coeffs"]["start"], pinfo["shocks_coeffs"]["stop"])
+    start, stop = (
+        pinfo["shocks_coeffs"]["start"],
+        pinfo["shocks_coeffs"]["stop"],
+    )
     shocks_coeffs = x[start:stop]
     dim = number_of_triangular_elements_to_dimensio(len(shocks_coeffs))
     shocks_cholesky = np.zeros((dim, dim))
@@ -297,16 +310,26 @@ def get_total_values(
 
     Parameters
     ----------
-    period
-    num_periods
-    optim_paras
-    rewards_systematic
-    draws
-    edu_spec
-    mapping_state_idx
-    periods_emax
-    k
-    states_all
+    period : int
+        Number of period
+    num_periods : int
+        Total number of periods
+    optim_paras : dict
+        Dictionary containing shocks, types, coefficients, etc..
+    rewards_systematic : np.array
+        Four-dimensional array
+    draws : np.array
+        Four-dimensional array
+    edu_spec : dict
+        Dictionary with lagged, start, share, max
+    mapping_state_idx : np.array
+        Six-dimensional array
+    periods_emax : np.array
+        Array with shape (num_periods, ???num_individuals)
+    k : int
+        ???
+    states_all : np.array
+        Array with shape (num_periods, ???num_individuals, ???num_states)
 
     """
     # We need to back out the wages from the total systematic rewards to working in the
@@ -316,7 +339,7 @@ def get_total_values(
         rewards_systematic, exp_a, exp_b, edu, choice_lagged, optim_paras
     )
 
-    rewards_ex_post = np.empty(4).fill(np.nan)
+    rewards_ex_post = np.full(4, np.nan)
 
     # Calculate ex post rewards
     total_increment = rewards_systematic[:2] - wages_systematic[:2]
@@ -328,7 +351,12 @@ def get_total_values(
     # Get future values
     if period != (num_periods - 1):
         emaxs = get_emaxs(
-            edu_spec, mapping_state_idx, period, periods_emax, k, states_all
+            edu_spec["max"],
+            mapping_state_idx,
+            period,
+            periods_emax,
+            k,
+            states_all,
         )
     else:
         emaxs = np.zeros(4)
@@ -336,20 +364,23 @@ def get_total_values(
     # Calculate total utilities
     total_values = rewards_ex_post + optim_paras["delta"] * emaxs
 
-    # This is required to ensure that the agent does not choose any
-    # inadmissible states. If the state is inadmissible, emaxs takes value zero.
+    # This is required to ensure that the agent does not choose any inadmissible states.
+    # If the state is inadmissible, emaxs takes value zero.
     if states_all[period, k, 2] >= edu_spec["max"]:
         total_values[2] += INADMISSIBILITY_PENALTY
 
     return total_values, rewards_ex_post
 
 
-def get_emaxs(edu_spec, mapping_state_idx, period, periods_emax, k, states_all):
+@njit
+def get_emaxs(
+    edu_spec_max, mapping_state_idx, period, periods_emax, k, states_all
+):
     """Get emaxs for additional choices.
 
     Parameters
     ----------
-    edu_spec
+    edu_spec_max
     mapping_state_idx
     period
     periods_emax
@@ -361,23 +392,29 @@ def get_emaxs(edu_spec, mapping_state_idx, period, periods_emax, k, states_all):
     exp_a, exp_b, edu, _, type_ = states_all[period, k, :]
 
     # Future utilities
-    emaxs = np.empty(4).fill(np.nan)
+    emaxs = np.full(4, np.nan)
 
     # Working in Occupation A
-    future_idx = mapping_state_idx[period + 1, exp_a + 1, exp_b, edu, 1 - 1, type_]
+    future_idx = mapping_state_idx[
+        period + 1, exp_a + 1, exp_b, edu, 1 - 1, type_
+    ]
     emaxs[0] = periods_emax[period + 1, future_idx]
 
     # Working in Occupation B
-    future_idx = mapping_state_idx[period + 1, exp_a, exp_b + 1, edu, 2 - 1, type_]
+    future_idx = mapping_state_idx[
+        period + 1, exp_a, exp_b + 1, edu, 2 - 1, type_
+    ]
     emaxs[1] = periods_emax[period + 1, future_idx]
 
     # Increasing schooling. Note that adding an additional year of schooling
     # is only possible for those that have strictly less than the maximum level
     # of additional education allowed.
-    is_inadmissible = edu >= edu_spec["max"]
-    future_idx = mapping_state_idx[period + 1, exp_a, exp_b, edu + 1, 3 - 1, type_]
+    is_inadmissible = edu >= edu_spec_max
+    future_idx = mapping_state_idx[
+        period + 1, exp_a, exp_b, edu + 1, 3 - 1, type_
+    ]
 
-    emaxs[2] = np.where(is_inadmissible, 0.0, periods_emax[period + 1, future_idx])
+    emaxs[2] = 0.0 if is_inadmissible else periods_emax[period + 1, future_idx]
 
     # Staying at home
     future_idx = mapping_state_idx[period + 1, exp_a, exp_b, edu, 4 - 1, type_]
@@ -429,7 +466,9 @@ def add_solution(
 ):
     """Add solution to class instance."""
     respy_obj.unlock()
-    respy_obj.set_attr("periods_rewards_systematic", periods_rewards_systematic)
+    respy_obj.set_attr(
+        "periods_rewards_systematic", periods_rewards_systematic
+    )
     respy_obj.set_attr("states_number_period", states_number_period)
     respy_obj.set_attr("mapping_state_idx", mapping_state_idx)
     respy_obj.set_attr("periods_emax", periods_emax)
@@ -513,7 +552,9 @@ def check_model_parameters(optim_paras):
 
     # Checks shock matrix
     assert optim_paras["shocks_cholesky"].shape == (4, 4)
-    np.allclose(optim_paras["shocks_cholesky"], np.tril(optim_paras["shocks_cholesky"]))
+    np.allclose(
+        optim_paras["shocks_cholesky"], np.tril(optim_paras["shocks_cholesky"])
+    )
 
     # Checks for type shares
     assert optim_paras["type_shares"].size == num_types * 2
@@ -548,7 +589,7 @@ def read_draws(num_periods, num_draws):
     This is only used in the development process.
     """
     # Initialize containers
-    periods_draws = np.empty((num_periods, num_draws, 4)).fill(np.nan)
+    periods_draws = np.full((num_periods, num_draws, 4), np.nan)
 
     # Read and distribute draws
     draws = np.array(np.genfromtxt(".draws.respy.test"), ndmin=2)
@@ -560,18 +601,27 @@ def read_draws(num_periods, num_draws):
     return periods_draws
 
 
+@njit
 def transform_disturbances(draws, shocks_mean, shocks_cholesky):
-    """Transform the standard normal deviates to the relevant distribution."""
-    draws_transformed = draws.copy()
-    draws_transformed = np.dot(shocks_cholesky, draws_transformed.T).T
+    """Transform the standard normal deviates to the relevant distribution.
 
-    for j in range(4):
-        draws_transformed[:, j] = draws_transformed[:, j] + shocks_mean[j]
+    Parameters
+    ----------
+    draws : np.array
+        Array with shape (num_draws, num_shocks)
+    shocks_mean : np.array
+        Array with shape (num_shocks,)
+    shocks_cholesky : np.array
+        Array with shape (num_shocks, num_shocks)
 
-    for j in range(2):
-        draws_transformed[:, j] = np.clip(
-            np.exp(draws_transformed[:, j]), 0.0, HUGE_FLOAT
-        )
+    """
+    draws_transformed = draws.dot(shocks_cholesky.T)
+
+    draws_transformed[:, :4] = draws_transformed[:, :4] + shocks_mean[:4]
+
+    draws_transformed[:, :2] = fr.clip(
+        np.exp(draws_transformed[:, :2]), 0.0, HUGE_FLOAT
+    )
 
     return draws_transformed
 
@@ -699,24 +749,53 @@ def get_num_obs_agent(data_array, num_agents_est):
 def back_out_systematic_wages(
     rewards_systematic, exp_a, exp_b, edu, choice_lagged, optim_paras
 ):
-    """Construct the wage component for the labor market rewards."""
+    """Construct the wage component for the labor market rewards.
+
+    Parameters
+    ----------
+    rewards_systematic : np.array
+        Array with shape (num_rewards).
+    exp_a : int
+        Years of experience in occupation A
+    exp_b : int
+        Years of experience in occupation B
+    edu : int
+        Years of education.
+    choice_lagged : int
+        ???
+    optim_paras : dict
+        ???
+
+    """
     # Construct covariates needed for the general part of labor market rewards.
-    covariates = construct_covariates(exp_a, exp_b, edu, choice_lagged, None, None)
+    covariates = construct_covariates(
+        exp_a, exp_b, edu, choice_lagged, None, None
+    )
 
     # First we calculate the general component.
-    general, wages_systematic = (np.empty(2).fill(np.nan), np.empty(2).fill(np.nan))
+    general, wages_systematic = (np.full(2, np.nan), np.full(2, np.nan))
 
-    covars_general = [1.0, covariates["not_exp_a_lagged"], covariates["not_any_exp_a"]]
+    covars_general = [
+        1.0,
+        covariates["not_exp_a_lagged"],
+        covariates["not_any_exp_a"],
+    ]
     general[0] = np.dot(optim_paras["coeffs_a"][12:], covars_general)
 
-    covars_general = [1.0, covariates["not_exp_b_lagged"], covariates["not_any_exp_b"]]
+    covars_general = [
+        1.0,
+        covariates["not_exp_b_lagged"],
+        covariates["not_any_exp_b"],
+    ]
     general[1] = np.dot(optim_paras["coeffs_b"][12:], covars_general)
 
     # Second we do the same with the common component.
     covars_common = [covariates["hs_graduate"], covariates["co_graduate"]]
     rewards_common = np.dot(optim_paras["coeffs_common"], covars_common)
 
-    wages_systematic[:2] = rewards_systematic[:2] - general[:2] - rewards_common
+    wages_systematic[:2] = (
+        rewards_systematic[:2] - general[:2] - rewards_common
+    )
 
     return wages_systematic
 
@@ -726,12 +805,18 @@ def construct_covariates(exp_a, exp_b, edu, choice_lagged, type_, period):
 
     Parameters
     ----------
-    exp_a
-    exp_b
-    edu
-    choice_lagged
-    type_
-    period
+    exp_a : int
+        Years of experience in occupation A.
+    exp_b : int
+        Years of experience in occupation B.
+    edu : int
+        Years of education.
+    choice_lagged : int
+        ???
+    type_ : int
+        ???
+    period : int
+        Number of period.
 
     Returns
     -------
@@ -762,7 +847,9 @@ def construct_covariates(exp_a, exp_b, edu, choice_lagged, type_, period):
         covariates["hs_graduate"] = int(edu >= 12)
         covariates["co_graduate"] = int(edu >= 16)
 
-        cond = (not covariates["edu_lagged"]) and (not covariates["hs_graduate"])
+        cond = (not covariates["edu_lagged"]) and (
+            not covariates["hs_graduate"]
+        )
         covariates["is_return_not_high_school"] = int(cond)
 
         cond = (not covariates["edu_lagged"]) and covariates["hs_graduate"]
@@ -788,11 +875,19 @@ def calculate_rewards_common(covariates, optim_paras):
 def calculate_rewards_general(covariates, optim_paras):
     """ Calculate the non-skill related reward components.
     """
-    rewards_general = np.empty(2).fill(np.nan)
-    covars_general = [1.0, covariates["not_exp_a_lagged"], covariates["not_any_exp_a"]]
+    rewards_general = np.full(2, np.nan)
+    covars_general = [
+        1.0,
+        covariates["not_exp_a_lagged"],
+        covariates["not_any_exp_a"],
+    ]
     rewards_general[0] = np.dot(optim_paras["coeffs_a"][12:], covars_general)
 
-    covars_general = [1.0, covariates["not_exp_b_lagged"], covariates["not_any_exp_b"]]
+    covars_general = [
+        1.0,
+        covariates["not_exp_b_lagged"],
+        covariates["not_any_exp_b"],
+    ]
     rewards_general[1] = np.dot(optim_paras["coeffs_b"][12:], covars_general)
 
     return rewards_general
