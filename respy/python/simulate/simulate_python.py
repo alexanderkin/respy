@@ -36,14 +36,16 @@ def pyth_simulate(
 
     record_simulation_start(num_agents_sim, seed_sim, file_sim)
 
-    # Standard deviates transformed to the distributions relevant for the agents actual decision
-    # making as traversing the tree.
-    periods_draws_sims_transformed = np.tile(np.nan, (num_periods, num_agents_sim, 4))
+    # Standard deviates transformed to the distributions relevant for the agents actual
+    # decision making as traversing the tree.
+    periods_draws_sims_transformed = np.empty((num_periods, num_agents_sim, 4)).fill(
+        np.nan
+    )
 
     for period in range(num_periods):
         periods_draws_sims_transformed[period, :, :] = transform_disturbances(
             periods_draws_sims[period, :, :],
-            np.array([0.0, 0.0, 0.0, 0.0]),
+            np.zeros(4),
             optim_paras["shocks_cholesky"],
         )
 
@@ -60,14 +62,15 @@ def pyth_simulate(
     count = 0
 
     # Initialize data
-    dataset = np.tile(MISSING_FLOAT, (num_agents_sim * num_periods, 29))
+    dataset = np.empty((num_agents_sim * num_periods, 29)).fill(MISSING_FLOAT)
 
     for i in range(num_agents_sim):
 
         current_state = states_all[0, 0, :].copy()
 
-        # We need to modify the initial conditions: (1) Schooling when entering the model and (2)
-        # individual type. We need to determine the initial value for the lagged variable.
+        # We need to modify the initial conditions: (1) Schooling when entering the
+        # model and (2) individual type. We need to determine the initial value for the
+        # lagged variable.
         current_state[3] = lagged_start[i]
         current_state[2] = edu_start[i]
         current_state[4] = types[i]
@@ -103,10 +106,11 @@ def pyth_simulate(
                 states_all,
             )
 
-            # We need to ensure that no individual chooses an inadmissible state. This cannot be
-            # done directly in the get_total_values function as the penalty otherwise dominates
-            # the interpolation equation. The parameter INADMISSIBILITY_PENALTY is a compromise.
-            # It is only relevant in very constructed cases.
+            # We need to ensure that no individual chooses an inadmissible state. This
+            # cannot be done directly in the get_total_values function as the penalty
+            # otherwise dominates the interpolation equation. The parameter
+            # INADMISSIBILITY_PENALTY is a compromise. It is only relevant in very
+            # constructed cases.
             if edu >= edu_spec["max"]:
                 total_values[2] = -HUGE_FLOAT
 
@@ -125,22 +129,23 @@ def pyth_simulate(
             if max_idx in [0, 1]:
                 dataset[count, 3] = wages_systematic[max_idx] * draws[max_idx]
 
-            # Write relevant state space for period to data frame. However, the individual's type
-            # is not part of the observed dataset. This is included in the simulated dataset.
+            # Write relevant state space for period to data frame. However, the
+            # individual's type is not part of the observed dataset. This is included in
+            # the simulated dataset.
             dataset[count, 4:8] = current_state[:4]
 
             # As we are working with a simulated dataset, we can also output additional
-            # information that is not available in an observed dataset. The discount rate is
-            # included as this allows to construct the EMAX with the information provided in the
-            # simulation output.
+            # information that is not available in an observed dataset. The discount
+            # rate is included as this allows to construct the EMAX with the information
+            # provided in the simulation output.
             dataset[count, 8:9] = type_
             dataset[count, 9:13] = total_values
             dataset[count, 13:17] = rewards_systematic
             dataset[count, 17:21] = draws
             dataset[count, 21:22] = optim_paras["delta"]
 
-            # For testing purposes, we also explicitly include the general reward component,
-            # the common component, and the immediate ex post rewards.
+            # For testing purposes, we also explicitly include the general reward
+            # component, the common component, and the immediate ex post rewards.
             covariates = construct_covariates(
                 exp_a, exp_b, edu, choice_lagged, type_, period
             )

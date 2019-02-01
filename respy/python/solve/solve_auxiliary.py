@@ -24,14 +24,14 @@ def pyth_create_state_space(num_periods, num_types, edu_spec):
     min_idx = edu_spec["max"] + 1
 
     # Array for possible realization of state space by period
-    states_all = np.tile(MISSING_INT, (num_periods, 100000, 5))
+    states_all = np.empty((num_periods, 100000, 5)).fill(MISSING_INT)
 
     # Array for the mapping of state space values to indices in variety of matrices.
     shape = (num_periods, num_periods, num_periods, min_idx, 4, num_types)
-    mapping_state_idx = np.tile(MISSING_INT, shape)
+    mapping_state_idx = np.empty(shape).fill(MISSING_INT)
 
     # Array for maximum number of realizations of state space by period
-    states_number_period = np.tile(MISSING_INT, num_periods)
+    states_number_period = np.empty(num_periods).fill(MISSING_INT)
 
     # Construct state space by periods
     for period in range(num_periods):
@@ -54,66 +54,71 @@ def pyth_create_state_space(num_periods, num_types, edu_spec):
                         # Loop over all admissible additional education levels
                         for edu_add in range(num_periods + 1):
 
-                            # Check if admissible for time constraints. Note that the total
-                            # number of activities does not have is less or equal to the total
-                            # possible number of activities as the rest is implicitly filled
-                            # with leisure.
+                            # Check if admissible for time constraints. Note that the
+                            # total number of activities does not have is less or equal
+                            # to the total possible number of activities as the rest is
+                            # implicitly filled with leisure.
                             if edu_add + exp_a + exp_b > period:
                                 continue
 
-                            # Agent cannot attain more additional education than (EDU_MAX -
-                            # EDU_START).
+                            # Agent cannot attain more additional education than
+                            # (EDU_MAX - EDU_START).
                             if edu_add > (edu_spec["max"] - edu_start):
                                 continue
 
-                            # Loop over all admissible values for the lagged activity: (1)
-                            # Occupation A, (2) Occupation B, (3) Education, and (4) Home.
+                            # Loop over all admissible values for the lagged activity:
+                            # (1) Occupation A, (2) Occupation B, (3) Education, and (4)
+                            # Home.
                             for choice_lagged in [1, 2, 3, 4]:
 
                                 if period > 0:
 
-                                    # (0, 1) Whenever an agent has only worked in Occupation A,
-                                    # then the lagged choice cannot be  anything other than one.
+                                    # (0, 1) Whenever an agent has only worked in
+                                    # Occupation A, then the lagged choice cannot be
+                                    # anything other than one.
                                     if (choice_lagged != 1) and (exp_a == period):
                                         continue
 
-                                    # (0, 2) Whenever an agent has only worked in Occupation B,
-                                    # then the lagged choice cannot be  anything other than two
+                                    # (0, 2) Whenever an agent has only worked in
+                                    # Occupation B, then the lagged choice cannot be
+                                    # anything other than two
                                     if (choice_lagged != 2) and (exp_b == period):
                                         continue
 
-                                    # (0, 3) Whenever an agent has only acquired additional
-                                    # education, then the lagged choice cannot be anything other
-                                    # than three..
+                                    # (0, 3) Whenever an agent has only acquired
+                                    # additional education, then the lagged choice
+                                    # cannot be anything other than three..
                                     if (choice_lagged != 3) and (edu_add == period):
                                         continue
 
-                                    # (0, 4) Whenever an agent has not acquired any additional
-                                    # education and we are not in the first period, then lagged
-                                    # activity cannot take a value of three.
+                                    # (0, 4) Whenever an agent has not acquired any
+                                    # additional education and we are not in the first
+                                    # period, then lagged activity cannot take a value
+                                    # of three.
                                     if (choice_lagged == 3) and (edu_add == 0):
                                         continue
 
-                                # (1, 1) In the first period individual either were in school the
-                                # previous period as well or at home. The cannot have any work
-                                # experience.
+                                # (1, 1) In the first period individual either were in
+                                # school the previous period as well or at home. The
+                                # cannot have any work experience.
                                 if period == 0:
                                     if choice_lagged in [1, 2]:
                                         continue
 
-                                # (2, 1) An individual that has never worked in Occupation A
-                                # cannot have that lagged activity.
+                                # (2, 1) An individual that has never worked in
+                                # Occupation A cannot have that lagged activity.
                                 if (choice_lagged == 1) and (exp_a == 0):
                                     continue
 
-                                # (3, 1) An individual that has never worked in Occupation B
-                                # cannot have a that lagged activity.
+                                # (3, 1) An individual that has never worked in
+                                # Occupation B cannot have a that lagged activity.
                                 if (choice_lagged == 2) and (exp_b == 0):
                                     continue
 
-                                # If we have multiple initial conditions it might well be the
-                                # case that we have a duplicate state, i.e. the same state is
-                                # possible with other initial condition that period.
+                                # If we have multiple initial conditions it might well
+                                # be the case that we have a duplicate state, i.e. the
+                                # same state is possible with other initial condition
+                                # that period.
                                 if (
                                     mapping_state_idx[
                                         period,
@@ -155,11 +160,7 @@ def pyth_create_state_space(num_periods, num_types, edu_spec):
     # Auxiliary objects
     max_states_period = max(states_number_period)
 
-    # Collect arguments
-    args = (states_all, states_number_period, mapping_state_idx, max_states_period)
-
-    # Finishing
-    return args
+    return (states_all, states_number_period, mapping_state_idx, max_states_period)
 
 
 def pyth_calculate_rewards_systematic(
@@ -169,10 +170,10 @@ def pyth_calculate_rewards_systematic(
     """
     # Initialize
     shape = (num_periods, max_states_period, 4)
-    periods_rewards_systematic = np.tile(MISSING_FLOAT, shape)
+    periods_rewards_systematic = np.empty(shape).fill(MISSING_FLOAT)
 
     # Calculate systematic instantaneous rewards
-    for period in range(num_periods - 1, -1, -1):
+    for period in reversed(range(num_periods)):
 
         # Loop over all possible states
         for k in range(states_number_period[period]):
@@ -181,7 +182,7 @@ def pyth_calculate_rewards_systematic(
             exp_a, exp_b, edu, choice_lagged, type_ = states_all[period, k, :]
 
             # Initialize container
-            rewards = np.tile(np.nan, 4)
+            rewards = np.empty(4).fill(np.nan)
 
             # Construct auxiliary information
             covariates = construct_covariates(
@@ -192,8 +193,8 @@ def pyth_calculate_rewards_systematic(
             rewards_general = calculate_rewards_general(covariates, optim_paras)
             rewards_common = calculate_rewards_common(covariates, optim_paras)
 
-            # Calculate the systematic part of OCCUPATION A and OCCUPATION B rewards. These are
-            # defined in a general sense, where not only wages matter.
+            # Calculate the systematic part of OCCUPATION A and OCCUPATION B rewards.
+            # These are defined in a general sense, where not only wages matter.
             wages = calculate_wages_systematic(covariates, optim_paras)
 
             for j in [0, 1]:
@@ -229,7 +230,6 @@ def pyth_calculate_rewards_systematic(
 
             periods_rewards_systematic[period, k, :] = rewards
 
-    # Finishing
     return periods_rewards_systematic
 
 
@@ -251,13 +251,14 @@ def pyth_backward_induction(
     file_sim,
     is_write,
 ):
-    """ Backward induction procedure. There are two main threads to this function depending on
-    whether interpolation is requested or not.
+    """ Backward induction procedure. There are two main threads to this function
+    depending on whether interpolation is requested or not.
+
     """
-    # Initialize containers, which contain a lot of missing values as we capture the tree
-    # structure in arrays of fixed dimension.
+    # Initialize containers, which contain a lot of missing values as we capture the
+    # tree structure in arrays of fixed dimension.
     i, j = num_periods, max_states_period
-    periods_emax = np.tile(MISSING_FLOAT, (i, j))
+    periods_emax = np.empty((i, j)).fill(MISSING_FLOAT)
 
     if is_myopic:
         record_solution_progress(-2, file_sim)
@@ -272,15 +273,15 @@ def pyth_backward_induction(
         optim_paras["shocks_cholesky"], optim_paras["shocks_cholesky"].T
     )
 
-    # Auxiliary objects. These shifts are used to determine the expected values of the two labor
-    # market alternatives. These are log normal distributed and thus the draws cannot simply set
-    # to zero.
-    shifts = [0.00, 0.00, 0.00, 0.00]
+    # Auxiliary objects. These shifts are used to determine the expected values of the
+    # two labor market alternatives. These are log normal distributed and thus the draws
+    # cannot simply set to zero.
+    shifts = np.zeros(4)
     shifts[0] = np.clip(np.exp(shocks_cov[0, 0] / 2.0), 0.0, HUGE_FLOAT)
     shifts[1] = np.clip(np.exp(shocks_cov[1, 1] / 2.0), 0.0, HUGE_FLOAT)
 
     # Initialize containers with missing values
-    periods_emax = np.tile(MISSING_FLOAT, (num_periods, max_states_period))
+    periods_emax = np.empty((num_periods, max_states_period)).fill(MISSING_FLOAT)
 
     # Iterate backward through all periods
     for period in range(num_periods - 1, -1, -1):
@@ -292,15 +293,15 @@ def pyth_backward_induction(
         # Treatment of the disturbances for the risk-only case is straightforward. Their
         # distribution is fixed once and for all.
         draws_emax_risk = transform_disturbances(
-            draws_emax_standard, np.tile(0.0, 4), optim_paras["shocks_cholesky"]
+            draws_emax_standard, np.zeros(4), optim_paras["shocks_cholesky"]
         )
 
         if is_write:
             record_solution_progress(4, file_sim, period, num_states)
 
-        # The number of interpolation points is the same for all periods. Thus, for some periods
-        # the number of interpolation points is larger than the actual number of states. In that
-        # case no interpolation is needed.
+        # The number of interpolation points is the same for all periods. Thus, for some
+        # periods the number of interpolation points is larger than the actual number of
+        # states. In that case no interpolation is needed.
         any_interpolated = (num_points_interp <= num_states) and is_interpolated
 
         # Case distinction
@@ -310,9 +311,9 @@ def pyth_backward_induction(
                 num_points_interp, num_states, period, is_debug
             )
 
-            # Constructing the exogenous variable for all states, including the ones where
-            # simulation will take place. All information will be used in either the construction
-            #  of the prediction model or the prediction step.
+            # Constructing the exogenous variable for all states, including the ones
+            # where simulation will take place. All information will be used in either
+            # the construction of the prediction model or the prediction step.
             exogenous, maxe = get_exogenous_variables(
                 period,
                 num_periods,
@@ -326,8 +327,8 @@ def pyth_backward_induction(
                 optim_paras,
             )
 
-            # Constructing the dependent variables for at the random subset of points where the
-            # EMAX is actually calculated.
+            # Constructing the dependent variables for at the random subset of points
+            # where the EMAX is actually calculated.
             endogenous = get_endogenous_variable(
                 period,
                 num_periods,
@@ -344,9 +345,9 @@ def pyth_backward_induction(
                 optim_paras,
             )
 
-            # Create prediction model based on the random subset of points where the EMAX is
-            # actually simulated and thus dependent and independent variables are available. For
-            # the interpolation points, the actual values are used.
+            # Create prediction model based on the random subset of points where the
+            # EMAX is actually simulated and thus dependent and independent variables
+            # are available. For the interpolation points, the actual values are used.
             predictions = get_predictions(
                 endogenous, exogenous, maxe, is_simulated, file_sim, is_write
             )
@@ -384,6 +385,7 @@ def pyth_backward_induction(
 
 def get_simulated_indicator(num_points_interp, num_candidates, period, is_debug):
     """ Get the indicator for points of interpolation and simulation.
+
     """
     # Drawing random interpolation points
     interpolation_points = np.random.choice(
@@ -391,7 +393,7 @@ def get_simulated_indicator(num_points_interp, num_candidates, period, is_debug)
     )
 
     # Constructing an indicator whether a state will be simulated or interpolated.
-    is_simulated = np.tile(False, num_candidates)
+    is_simulated = np.empty(num_candidates).fill(False)
     is_simulated[interpolation_points] = True
 
     # Check for debugging cases.
@@ -422,12 +424,13 @@ def get_exogenous_variables(
     edu_spec,
     optim_paras,
 ):
-    """ Get exogenous variables for interpolation scheme. The unused argument is present to align
-    the interface between the PYTHON and FORTRAN implementations.
+    """ Get exogenous variables for interpolation scheme. The unused argument is present
+    to align the interface between the PYTHON and FORTRAN implementations.
+
     """
     # Construct auxiliary objects
-    exogenous = np.tile(np.nan, (num_states, 9))
-    maxe = np.tile(np.nan, num_states)
+    exogenous = np.empty((num_states, 9)).fill(np.nan)
+    maxe = np.empty(num_states).fill(np.nan)
 
     # Iterate over all states.
     for k in range(num_states):
@@ -459,7 +462,6 @@ def get_exogenous_variables(
         # Add intercept to set of independent variables and replace infinite values.
         exogenous[:, 8] = 1
 
-    # Finishing
     return exogenous, maxe
 
 
@@ -479,9 +481,10 @@ def get_endogenous_variable(
     optim_paras,
 ):
     """ Construct endogenous variable for the subset of interpolation points.
+
     """
     # Construct auxiliary objects
-    endogenous_variable = np.tile(np.nan, num_states)
+    endogenous_variable = np.empty(num_states).fill(np.nan)
 
     for k in range(num_states):
 
@@ -510,36 +513,35 @@ def get_endogenous_variable(
         # Construct dependent variable
         endogenous_variable[k] = emax - maxe[k]
 
-    # Finishing
     return endogenous_variable
 
 
 def get_predictions(endogenous, exogenous, maxe, is_simulated, file_sim, is_write):
-    """ Fit an OLS regression of the exogenous variables on the endogenous variables and use the
-    results to predict the endogenous variables for all points in the state space.
+    """ Fit an OLS regression of the exogenous variables on the endogenous variables and
+    use the results to predict the endogenous variables for all points in the state
+    space.
+
     """
     # Define ordinary least squares model and fit to the data.
     model = sm.OLS(endogenous[is_simulated], exogenous[is_simulated])
     results = model.fit()
 
-    # Use the model to predict EMAX for all states. As in Keane & Wolpin (1994), negative
-    # predictions are truncated to zero.
+    # Use the model to predict EMAX for all states. As in Keane & Wolpin (1994),
+    # negative predictions are truncated to zero.
     endogenous_predicted = results.predict(exogenous)
     endogenous_predicted = np.clip(endogenous_predicted, 0.00, None)
 
-    # Construct predicted EMAX for all states and the replace interpolation points with simulated
-    # values.
+    # Construct predicted EMAX for all states and the replace interpolation points with
+    # simulated values.
     predictions = endogenous_predicted + maxe
     predictions[is_simulated] = endogenous[is_simulated] + maxe[is_simulated]
 
-    # Checks
     check_prediction_model(endogenous_predicted, model)
 
     # Write out some basic information to spot problems easily.
     if is_write:
         record_solution_prediction(results, file_sim)
 
-    # Finishing
     return predictions
 
 
@@ -556,6 +558,7 @@ def check_prediction_model(predictions_diff, model):
 
 def check_input(respy_obj):
     """ Check input arguments.
+
     """
     # Check that class instance is locked.
     assert respy_obj.get_attr("is_locked")
@@ -564,7 +567,6 @@ def check_input(respy_obj):
     if respy_obj.get_attr("is_solved"):
         respy_obj.reset()
 
-    # Finishing
     return True
 
 
@@ -586,14 +588,14 @@ def calculate_wages_systematic(covariates, optim_paras):
     covars_wages += [None]
     covars_wages += [None]
 
-    # This used for testing purposes, where we compare the results from the RESPY package
-    # to the original RESTUD program.
+    # This used for testing purposes, where we compare the results from the RESPY
+    # package to the original RESTUD program.
     if os.path.exists(".restud.respy.scratch"):
         covars_wages[3] *= 100.00
         covars_wages[5] *= 100.00
 
     # Calculate systematic part of wages in OCCUPATION A and OCCUPATION B
-    wages = np.tile(np.nan, 2)
+    wages = np.empty(2).fill(np.nan)
 
     covars_wages[-2:] = [covariates["any_exp_a"], covariates["work_a_lagged"]]
     wage = np.exp(np.dot(optim_paras["coeffs_a"][:12], covars_wages))

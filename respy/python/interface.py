@@ -105,8 +105,8 @@ def respy_interface(respy_obj, request, data_array=None):
         # Cutting to size
         states_all = states_all[:, : max(states_number_period), :]
 
-        # Collect arguments that are required for the criterion function.
-        # These must be in the correct order already.
+        # Collect arguments that are required for the criterion function. These must be
+        # in the correct order already.
         args = (
             is_interpolated,
             num_draws_emax,
@@ -129,10 +129,10 @@ def respy_interface(respy_obj, request, data_array=None):
             edu_spec,
         )
 
-        # Special case where just one evaluation at the starting values is
-        # requested is accounted for. Note, that the relevant value of the
-        # criterion function is always the one indicated by the class attribute
-        # and not the value returned by the optimization algorithm.
+        # Special case where just one evaluation at the starting values is requested is
+        # accounted for. Note, that the relevant value of the criterion function is
+        # always the one indicated by the class attribute and not the value returned by
+        # the optimization algorithm.
         num_free = optim_paras["paras_fixed"].count(False)
 
         paras_bounds_free_unscaled = []
@@ -176,7 +176,7 @@ def respy_interface(respy_obj, request, data_array=None):
             x_optim_free_unscaled_start, precond_matrix, "do"
         )
 
-        paras_bounds_free_scaled = np.tile(np.nan, (num_free, 2))
+        paras_bounds_free_scaled = np.empty((num_free, 2)).fill(np.nan)
         for i in range(2):
             paras_bounds_free_scaled[:, i] = apply_scaling(
                 paras_bounds_free_unscaled[:, i], precond_matrix, "do"
@@ -444,7 +444,7 @@ def get_scales_magnitudes(x_optim_free_unscaled_start):
         else:
             magnitude = int(floor(log10(abs(x))))
             if magnitude == 0:
-                scale = 1.0 / 10.0
+                scale = 0.1
             else:
                 scale = (10 ** magnitude) ** (-1) / 10.0
         precond_matrix[i, i] = scale

@@ -83,11 +83,7 @@ DATA_LABELS_SIM += [
     "General_Reward_2",
     "Common_Reward",
 ]
-DATA_LABELS_SIM += [
-    "Immediate_Reward_1",
-    "Immediate_Reward_2",
-    "Immediate_Reward_3",
-]
+DATA_LABELS_SIM += ["Immediate_Reward_1", "Immediate_Reward_2", "Immediate_Reward_3"]
 DATA_LABELS_SIM += ["Immediate_Reward_4"]
 
 DATA_FORMATS_EST = dict()

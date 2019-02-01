@@ -67,14 +67,14 @@ def pyth_contributions(
         optim_paras (dict): Dictionary with quantities that were extracted
             from the parameter vector.
     """
-    # define a shortcut to the cholesky factors of the shocks, because they
-    # are so frequently used inside deeply nested loops
+    # define a shortcut to the cholesky factors of the shocks, because they are so
+    # frequently used inside deeply nested loops
     sc = optim_paras["shocks_cholesky"]
     is_deterministic = np.count_nonzero(sc) == 0
 
     # Initialize auxiliary objects
-    contribs = np.tile(-HUGE_FLOAT, num_agents_est)
-    prob_obs = np.tile(-HUGE_FLOAT, num_periods)
+    contribs = np.empty(num_agents_est).fill(-HUGE_FLOAT)
+    prob_obs = np.empty(num_periods).fill(-HUGE_FLOAT)
 
     # Calculate the probability over agents and time.
     for j in range(num_agents_est):
@@ -88,19 +88,19 @@ def pyth_contributions(
             optim_paras["type_shares"], edu_start
         )
 
-        # Container for the likelihood of the observed choice for each type.
-        # likelihood contribution for each type
-        prob_type = np.tile(1.0, num_types)
+        # Container for the likelihood of the observed choice for each type. likelihood
+        # contribution for each type
+        prob_type = np.ones(num_types)
 
         for type_ in range(num_types):
 
             # prob_obs has length p
-            prob_obs[:] = 0.00
+            prob_obs[:] = 0.0
             for p in range(num_obs):
 
                 period = int(data_array[row_start + p, 1])
-                # Extract observable components of state space as well as
-                # agent decision.
+                # Extract observable components of state space as well as agent
+                # decision.
                 exp_a, exp_b, edu, choice_lagged = data_array[
                     row_start + p, 4:8
                 ].astype(int)
@@ -114,23 +114,20 @@ def pyth_contributions(
                 # Create an index for the choice.
                 idx = choice - 1
 
-                # Extract relevant deviates from standard normal distribution.
-                # The same set of baseline draws are used for each agent and
-                # period.
+                # Extract relevant deviates from standard normal distribution. The same
+                # set of baseline draws are used for each agent and period.
                 draws_prob_raw = periods_draws_prob[period, :, :].copy()
 
-                # Get state index to access the systematic component of the
-                # agents rewards. These feed into the simulation of choice
-                # probabilities.
+                # Get state index to access the systematic component of the agents
+                # rewards. These feed into the simulation of choice probabilities.
                 k = mapping_state_idx[
                     period, exp_a, exp_b, edu, choice_lagged - 1, type_
                 ]
                 rewards_systematic = periods_rewards_systematic[period, k, :]
 
-                # If an agent is observed working, then the the labor market
-                # shocks are observed and the conditional distribution is used
-                # to determine the choice probabilities if the wage information
-                # is available as well.
+                # If an agent is observed working, then the the labor market shocks are
+                # observed and the conditional distribution is used to determine the
+                # choice probabilities if the wage information is available as well.
                 if is_working and (not is_wage_missing):
                     wages_systematic = back_out_systematic_wages(
                         rewards_systematic,
@@ -140,43 +137,41 @@ def pyth_contributions(
                         choice_lagged,
                         optim_paras,
                     )
-                    # Calculate the disturbance which are implied by the model
-                    # and the observed wages.
+                    # Calculate the disturbance which are implied by the model and the
+                    # observed wages.
                     dist = np.clip(
                         np.log(wage_observed), -HUGE_FLOAT, HUGE_FLOAT
                     ) - np.clip(np.log(wages_systematic[idx]), -HUGE_FLOAT, HUGE_FLOAT)
 
-                    # If there is no random variation in rewards, then the
-                    # observed wages need to be identical to their systematic
-                    # components. The discrepancy between the observed
-                    # wages and their systematic components might be nonzero
-                    # (but small) due to the reading in of the dataset
-                    # (FORTRAN only).
+                    # If there is no random variation in rewards, then the observed
+                    # wages need to be identical to their systematic components. The
+                    # discrepancy between the observed wages and their systematic
+                    # components might be nonzero (but small) due to the reading in of
+                    # the dataset (FORTRAN only).
                     if is_deterministic and (dist > SMALL_FLOAT):
                         contribs[:] = 1
                         return contribs
 
-                # Simulate the conditional distribution of alternative-specific
-                # value functions and determine the choice probabilities.
-                counts = np.tile(0, 4)
+                # Simulate the conditional distribution of alternative-specific value
+                # functions and determine the choice probabilities.
+                counts = np.zeros(4)
 
                 for s in range(num_draws_prob):
 
                     # Extract the standard normal deviates for the iteration.
                     draws_stan = draws_prob_raw[s, :]
 
-                    # Construct independent normal draws implied by the agents
-                    # state experience. This is needed to maintain the
-                    # correlation structure of the disturbances. Special care
-                    # is needed in case of a deterministic model, as otherwise
-                    # a zero division error occurs.
+                    # Construct independent normal draws implied by the agents state
+                    # experience. This is needed to maintain the correlation structure
+                    # of the disturbances. Special care is needed in case of a
+                    # deterministic model, as otherwise a zero division error occurs.
                     if is_working and (not is_wage_missing):
                         if is_deterministic:
                             prob_wage = HUGE_FLOAT
                         else:
                             if choice == 1:
                                 draws_stan[0] = dist / sc[idx, idx]
-                                mean = 0.00
+                                mean = 0.0
                                 sd = abs(sc[idx, idx])
                             else:
                                 draws_stan[idx] = (
@@ -189,20 +184,19 @@ def pyth_contributions(
                     else:
                         prob_wage = 1.0
 
-                    # As deviates are aligned with the state experiences,
-                    # create the conditional draws. Note, that the realization
-                    # of the random component of wages align with their
-                    # observed counterpart in the data.
+                    # As deviates are aligned with the state experiences, create the
+                    # conditional draws. Note, that the realization of the random
+                    # component of wages align with their observed counterpart in the
+                    # data.
                     draws_cond = np.dot(sc, draws_stan.T).T
 
-                    # Extract deviates from (un-)conditional normal
-                    # distributions and transform labor market shocks.
-                    # this makes a copy
+                    # Extract deviates from (un-)conditional normal distributions and
+                    # transform labor market shocks. this makes a copy
                     draws = draws_cond[:]
                     draws[:2] = np.clip(np.exp(draws[:2]), 0.0, HUGE_FLOAT)
 
-                    # Calculate total values.
-                    # immediate rewards, including shock + expected future value!
+                    # Calculate total values. Immediate rewards, including shock +
+                    # expected future value!
                     total_values, _ = get_total_values(
                         period,
                         num_periods,
@@ -226,8 +220,8 @@ def pyth_contributions(
                 # Determine relative shares
                 prob_obs[p] = prob_obs[p] / num_draws_prob
 
-                # If there is no random variation in rewards, then this implies
-                # that the observed choice in the dataset is the only choice.
+                # If there is no random variation in rewards, then this implies that the
+                # observed choice in the dataset is the only choice.
                 if is_deterministic and (not (counts[idx] == num_draws_prob)):
                     contribs[:] = 1
                     return contribs
@@ -237,11 +231,9 @@ def pyth_contributions(
         # Adjust  and record likelihood contribution
         contribs[j] = np.sum(prob_type * type_shares)
 
-    # If there is no random variation in rewards and no agent violated the
-    # implications of observed wages and choices, then the evaluation return
-    # value of one.
+    # If there is no random variation in rewards and no agent violated the implications
+    # of observed wages and choices, then the evaluation return value of one.
     if is_deterministic:
         contribs[:] = np.exp(1.0)
 
-    # Finishing
     return contribs

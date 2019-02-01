@@ -253,7 +253,7 @@ def check_model_solution(attr_dict):
         # Check that mapping is defined for all possible realizations of
         # the state space by period. Check that mapping is not defined for
         # all inadmissible values.
-        is_infinite = np.tile(False, reps=mapping_state_idx.shape)
+        is_infinite = np.empty(mapping_state_idx.shape).fill(False)
         for period in range(num_periods):
             nstates = states_number_period[period]
             indices = states_all[period, :nstates, :].astype("int")
@@ -271,7 +271,7 @@ def check_model_solution(attr_dict):
 
         # Check the calculated systematic rewards (finite for admissible values
         # and infinite rewards otherwise).
-        is_infinite = np.tile(False, reps=periods_rewards_systematic.shape)
+        is_infinite = np.empty(periods_rewards_systematic.shape).fill(False)
         for period in range(num_periods):
             for k in range(states_number_period[period]):
                 assert np.all(np.isfinite(periods_rewards_systematic[period, k, :]))
@@ -287,14 +287,14 @@ def check_model_solution(attr_dict):
 
         # Check the expected future value (finite for admissible values
         # and infinite rewards otherwise).
-        is_infinite = np.tile(False, reps=periods_emax.shape)
+        is_infinite = np.empty(periods_emax.shape).fill(False)
         for period in range(num_periods):
             for k in range(states_number_period[period]):
                 assert np.all(np.isfinite(periods_emax[period, k]))
                 is_infinite[period, k] = True
             assert np.all(np.isfinite(periods_emax[is_infinite == True]))
             if num_periods == 1:
-                assert len(periods_emax[is_infinite == False]) == 0
+                assert periods_emax[is_infinite == False].shape[0] == 0
             else:
                 assert np.all(np.isfinite(periods_emax[is_infinite == False])) == False
 

@@ -20,23 +20,26 @@ def pyth_solve(
 ):
     """ Solving the model using pure PYTHON code.
     """
-    # Creating the state space of the model and collect the results in the
-    # package class.
+    # Creating the state space of the model and collect the results in the package
+    # class.
     record_solution_progress(1, file_sim)
 
     # Create state space
-    states_all, states_number_period, mapping_state_idx, max_states_period = pyth_create_state_space(
-        num_periods, num_types, edu_spec
-    )
+    (
+        states_all,
+        states_number_period,
+        mapping_state_idx,
+        max_states_period,
+    ) = pyth_create_state_space(num_periods, num_types, edu_spec)
 
     # Cutting to size
     states_all = states_all[:, : max(states_number_period), :]
 
     record_solution_progress(-1, file_sim)
 
-    # Calculate systematic rewards which are later used in the backward
-    # induction procedure. These are calculated without any reference
-    # to the alternative shock distributions.
+    # Calculate systematic rewards which are later used in the backward induction
+    # procedure. These are calculated without any reference to the alternative shock
+    # distributions.
     record_solution_progress(2, file_sim)
 
     # Calculate all systematic rewards
@@ -46,9 +49,9 @@ def pyth_solve(
 
     record_solution_progress(-1, file_sim)
 
-    # Backward iteration procedure. There is a PYTHON and FORTRAN
-    # implementation available. If agents are myopic, the backward induction
-    # procedure is not called upon.
+    # Backward iteration procedure. There is a PYTHON and FORTRAN implementation
+    # available. If agents are myopic, the backward induction procedure is not called
+    # upon.
     record_solution_progress(3, file_sim)
 
     periods_emax = pyth_backward_induction(
@@ -73,14 +76,10 @@ def pyth_solve(
     if not is_myopic:
         record_solution_progress(-1, file_sim)
 
-    # Collect return arguments in tuple
-    args = (
+    return (
         periods_rewards_systematic,
         states_number_period,
         mapping_state_idx,
         periods_emax,
         states_all,
     )
-
-    # Finishing
-    return args
