@@ -3,17 +3,18 @@
 The goal is to ensure that the code handles it all well. This increases the
 robustness of the package as the data is not so well-behaved as simulations.
 """
-
-from auxiliary_shared import send_notification
-from auxiliary_robustness import run_robustness_test
-from auxiliary_robustness import run_for_hours_sequential
-from auxiliary_robustness import run_for_hours_parallel
-from auxiliary_career_decision_data import prepare_dataset
 import argparse
-import numpy as np
-from os.path import exists, join
 import os
+from os.path import exists
+from os.path import join
+
+import numpy as np
+from auxiliary_career_decision_data import prepare_dataset
 from auxiliary_property import cleanup_testing_infrastructure
+from auxiliary_robustness import run_for_hours_parallel
+from auxiliary_robustness import run_for_hours_sequential
+from auxiliary_robustness import run_robustness_test
+from auxiliary_shared import send_notification
 
 
 def run(request, is_compile, is_background, num_procs, keep_dataset):

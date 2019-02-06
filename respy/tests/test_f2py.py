@@ -1,54 +1,60 @@
-import sys
 import os
+import sys
+from functools import partial
 
-import statsmodels.api as sm
-from scipy.stats import norm
 import numpy as np
 import pytest
 import scipy
+import statsmodels.api as sm
+from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_equal
+from numpy.testing import assert_equal
+from scipy.stats import norm
 
-from respy.python.shared.shared_auxiliary import get_conditional_probabilities
-from respy.python.solve.solve_auxiliary import pyth_calculate_rewards_systematic
+from respy import RespyCls
+from respy.fortran.interface import resfort_interface
+from respy.pre_processing.data_processing import process_dataset
+from respy.python.estimate.estimate_python import pyth_criterion
+from respy.python.evaluate.evaluate_python import pyth_contributions
+from respy.python.interface import get_scales_magnitudes
 from respy.python.record.record_estimation import _spectral_condition_number
 from respy.python.shared.shared_auxiliary import back_out_systematic_wages
+from respy.python.shared.shared_auxiliary import create_draws
+from respy.python.shared.shared_auxiliary import dist_class_attributes
+from respy.python.shared.shared_auxiliary import extract_cholesky
+from respy.python.shared.shared_auxiliary import get_conditional_probabilities
+from respy.python.shared.shared_auxiliary import get_num_obs_agent
+from respy.python.shared.shared_auxiliary import get_optim_paras
+from respy.python.shared.shared_auxiliary import read_draws
 from respy.python.shared.shared_auxiliary import replace_missing_values
 from respy.python.shared.shared_auxiliary import transform_disturbances
-from respy.python.solve.solve_auxiliary import pyth_create_state_space
-from respy.python.solve.solve_auxiliary import pyth_backward_induction
-from respy.python.solve.solve_auxiliary import get_simulated_indicator
-from respy.python.solve.solve_auxiliary import get_exogenous_variables
-from respy.python.shared.shared_auxiliary import dist_class_attributes
-from respy.python.solve.solve_auxiliary import get_endogenous_variable
-from respy.python.shared.shared_constants import TEST_RESOURCES_BUILD
-from respy.python.evaluate.evaluate_python import pyth_contributions
-from respy.python.simulate.simulate_auxiliary import sort_type_info
-from respy.python.simulate.simulate_auxiliary import sort_edu_spec
-from respy.python.shared.shared_auxiliary import get_num_obs_agent
-from respy.python.shared.shared_auxiliary import extract_cholesky
-from respy.python.shared.shared_auxiliary import get_optim_paras
-from respy.python.estimate.estimate_python import pyth_criterion
-from respy.python.simulate.simulate_python import pyth_simulate
-from respy.python.solve.solve_auxiliary import get_predictions
-from respy.python.solve.solve_risk import construct_emax_risk
-from respy.python.shared.shared_auxiliary import create_draws
-from respy.python.shared.shared_auxiliary import read_draws
+from respy.python.shared.shared_constants import DECIMALS
 from respy.python.shared.shared_constants import IS_F2PY
-from respy.python.interface import get_scales_magnitudes
-from respy.pre_processing.data_processing import process_dataset
+from respy.python.shared.shared_constants import TEST_RESOURCES_BUILD
+from respy.python.shared.shared_constants import TOL
+from respy.python.simulate.simulate_auxiliary import sort_edu_spec
+from respy.python.simulate.simulate_auxiliary import sort_type_info
+from respy.python.simulate.simulate_python import pyth_simulate
+from respy.python.solve.solve_auxiliary import get_endogenous_variable
+from respy.python.solve.solve_auxiliary import get_exogenous_variables
+from respy.python.solve.solve_auxiliary import get_predictions
+from respy.python.solve.solve_auxiliary import get_simulated_indicator
+from respy.python.solve.solve_auxiliary import pyth_backward_induction
+from respy.python.solve.solve_auxiliary import pyth_calculate_rewards_systematic
+from respy.python.solve.solve_auxiliary import pyth_create_state_space
 from respy.python.solve.solve_python import pyth_solve
-from respy.fortran.interface import resfort_interface
+from respy.python.solve.solve_risk import construct_emax_risk
+from respy.tests.codes.auxiliary import simulate_observed
+from respy.tests.codes.auxiliary import write_draws
+from respy.tests.codes.auxiliary import write_edu_start
 from respy.tests.codes.auxiliary import write_interpolation_grid
 from respy.tests.codes.auxiliary import write_lagged_start
-from respy.tests.codes.auxiliary import simulate_observed
-from respy.tests.codes.random_init import generate_init
-from respy.tests.codes.auxiliary import write_edu_start
-from respy.tests.codes.auxiliary import write_draws
 from respy.tests.codes.auxiliary import write_types
-from functools import partial
-from numpy.testing import assert_equal, assert_array_equal, assert_array_almost_equal
-from respy import RespyCls
-
-from respy.python.shared.shared_constants import DECIMALS, TOL
+from respy.tests.codes.random_init import generate_init
+from respy.python.shared.data_classes import (
+    education_specification,
+    optimization_parameters,
+)
 
 assert_allclose = partial(np.testing.assert_allclose, rtol=TOL, atol=TOL)
 assert_almost_equal = partial(np.testing.assert_almost_equal, decimal=DECIMALS)
@@ -64,10 +70,11 @@ class TestClass(object):
     """
 
     def test_1(self):
-        """ Compare the evaluation of the criterion function for the ambiguity optimization and
-        the simulated expected future value between the FORTRAN and PYTHON implementations. These
-        tests are set up a separate test case due to the large setup cost to construct the
-        ingredients for the interface.
+        """ Compare the evaluation of the criterion function for the ambiguity
+        optimization and the simulated expected future value between the FORTRAN and
+        PYTHON implementations. These tests are set up a separate test case due to the
+        large setup cost to construct the ingredients for the interface.
+
         """
         # Generate constraint periods
         constr = dict()
@@ -82,7 +89,18 @@ class TestClass(object):
         respy_obj = simulate_observed(respy_obj)
 
         # Extract class attributes
-        periods_rewards_systematic, states_number_period, mapping_state_idx, periods_emax, num_periods, states_all, num_draws_emax, edu_spec, optim_paras, num_types = dist_class_attributes(
+        (
+            periods_rewards_systematic,
+            states_number_period,
+            mapping_state_idx,
+            periods_emax,
+            num_periods,
+            states_all,
+            num_draws_emax,
+            edu_spec,
+            optim_paras,
+            num_types,
+        ) = dist_class_attributes(
             respy_obj,
             "periods_rewards_systematic",
             "states_number_period",
@@ -127,7 +145,11 @@ class TestClass(object):
         )
 
         args = ()
-        args += base_args + (edu_spec, optim_paras)
+        args += base_args + (
+            # Recasting to namedtuple for compability
+            education_specification(**edu_spec),
+            optimization_parameters(**optim_paras),
+        )
         py = construct_emax_risk(*args)
 
         args = ()
@@ -142,8 +164,9 @@ class TestClass(object):
         assert_allclose(py, f90)
 
     def test_2(self):
-        """ Compare results between FORTRAN and PYTHON of selected hand-crafted functions. In
-        test_97() we test FORTRAN implementations against PYTHON intrinsic routines.
+        """ Compare results between FORTRAN and PYTHON of selected hand-crafted
+        functions. In test_97() we test FORTRAN implementations against PYTHON intrinsic
+        routines.
         """
         for _ in range(33):
 
@@ -297,11 +320,24 @@ class TestClass(object):
         # Perform toolbox actions
         respy_obj = RespyCls("test.respy.ini")
 
-        # Ensure that backward induction routines use the same grid for the interpolation.
+        # Ensure that backward induction routines use the same grid for the
+        # interpolation.
         write_interpolation_grid("test.respy.ini")
 
         # Extract class attributes
-        num_periods, edu_spec, optim_paras, num_draws_emax, seed_emax, is_debug, is_interpolated, num_points_interp, optimizer_options, file_sim, num_types = dist_class_attributes(
+        (
+            num_periods,
+            edu_spec,
+            optim_paras,
+            num_draws_emax,
+            seed_emax,
+            is_debug,
+            is_interpolated,
+            num_points_interp,
+            optimizer_options,
+            file_sim,
+            num_types,
+        ) = dist_class_attributes(
             respy_obj,
             "num_periods",
             "edu_spec",
@@ -357,8 +393,8 @@ class TestClass(object):
         f2py = fort_debug.wrapper_calculate_rewards_systematic(*args)
         assert_allclose(pyth, f2py)
 
-        # Carry some results from the systematic rewards calculation for future use and create
-        # the required set of disturbances.
+        # Carry some results from the systematic rewards calculation for future use and
+        # create the required set of disturbances.
         periods_draws_emax = create_draws(
             num_periods, num_draws_emax, seed_emax, is_debug
         )
@@ -411,7 +447,26 @@ class TestClass(object):
         max_states_period = write_interpolation_grid("test.respy.ini")
 
         # Extract class attributes
-        num_periods, edu_spec, optim_paras, num_draws_emax, is_debug, is_interpolated, num_points_interp, is_myopic, num_agents_sim, num_draws_prob, tau, seed_sim, num_agents_est, states_number_period, optimizer_options, file_sim, num_types, num_paras = dist_class_attributes(
+        (
+            num_periods,
+            edu_spec,
+            optim_paras,
+            num_draws_emax,
+            is_debug,
+            is_interpolated,
+            num_points_interp,
+            is_myopic,
+            num_agents_sim,
+            num_draws_prob,
+            tau,
+            seed_sim,
+            num_agents_est,
+            states_number_period,
+            optimizer_options,
+            file_sim,
+            num_types,
+            num_paras,
+        ) = dist_class_attributes(
             respy_obj,
             "num_periods",
             "edu_spec",
@@ -448,7 +503,8 @@ class TestClass(object):
         type_spec_shares = optim_paras["type_shares"]
         type_spec_shifts = optim_paras["type_shifts"]
 
-        # Write out random components and interpolation grid to align the three implementations.
+        # Write out random components and interpolation grid to align the three
+        # implementations.
         max_draws = max(num_agents_sim, num_draws_emax, num_draws_prob)
         write_types(type_spec_shares, num_agents_sim)
         write_edu_start(edu_spec, num_agents_sim)
@@ -526,7 +582,8 @@ class TestClass(object):
         f2py = fort_debug.wrapper_simulate(*args)
         assert_allclose(py, f2py)
 
-        # Is is very important to cut the data array down to the size of the estimation sample.
+        # Is is very important to cut the data array down to the size of the estimation
+        # sample.
         data_array = py[: num_agents_est * num_periods, :]
 
         base_args = (
@@ -600,7 +657,23 @@ class TestClass(object):
         respy_obj = simulate_observed(respy_obj)
 
         # Extract class attributes
-        periods_rewards_systematic, states_number_period, mapping_state_idx, seed_prob, periods_emax, num_periods, states_all, num_points_interp, edu_spec, num_draws_emax, is_debug, optim_paras, optimizer_options, file_sim, num_types = dist_class_attributes(
+        (
+            periods_rewards_systematic,
+            states_number_period,
+            mapping_state_idx,
+            seed_prob,
+            periods_emax,
+            num_periods,
+            states_all,
+            num_points_interp,
+            edu_spec,
+            num_draws_emax,
+            is_debug,
+            optim_paras,
+            optimizer_options,
+            file_sim,
+            num_types,
+        ) = dist_class_attributes(
             respy_obj,
             "periods_rewards_systematic",
             "states_number_period",
@@ -649,7 +722,8 @@ class TestClass(object):
 
         shifts = np.random.randn(4)
 
-        # Slight modification of request which assures that the interpolation code is working.
+        # Slight modification of request which assures that the interpolation code is
+        # working.
         num_points_interp = min(num_points_interp, num_states)
 
         # Get the IS_SIMULATED indicator for the subset of points which are used for the
@@ -764,8 +838,9 @@ class TestClass(object):
         assert_equal(len(f90), num_states)
         assert_equal(np.all(f90) in [0, 1], True)
 
-        # Test the standardization across PYTHON, F2PY, and FORTRAN implementations. This is
-        # possible as we write out an interpolation grid to disk which is used for both functions.
+        # Test the standardization across PYTHON, F2PY, and FORTRAN implementations.
+        # This is possible as we write out an interpolation grid to disk which is used
+        # for both functions.
         base_args = (num_points_interp, num_states, period, is_debug)
         args = base_args
         py = get_simulated_indicator(*args)
@@ -774,8 +849,8 @@ class TestClass(object):
         assert_array_equal(f90, 1 * py)
         os.unlink(".interpolation.respy.test")
 
-        # Special case where number of interpolation points are same as the number of candidates.
-        # In that case the returned indicator should be all TRUE.
+        # Special case where number of interpolation points are same as the number of
+        # candidates. In that case the returned indicator should be all TRUE.
         args = (num_states, num_states, period, True, num_periods)
         f90 = fort_debug.wrapper_get_simulated_indicator(*args)
         assert_equal(sum(f90), num_states)
@@ -883,7 +958,8 @@ class TestClass(object):
         f90 = fort_debug.wrapper_sorted(input_array, num_elements)
         assert_equal(py, f90)
 
-        # We now turn to the more complicated testing of hand-crafted functions for this purpose.
+        # We now turn to the more complicated testing of hand-crafted functions for this
+        # purpose.
         generate_init()
         respy_obj = RespyCls("test.respy.ini")
 

@@ -1,15 +1,17 @@
 import numpy as np
 import pandas as pd
-from respy.python.shared.shared_constants import OPT_EST_FORT
-from respy.python.shared.shared_constants import OPT_EST_PYTH
+
+from respy.custom_exceptions import UserError
 from respy.python.shared.shared_auxiliary import check_model_parameters
 from respy.python.shared.shared_auxiliary import get_optim_paras
-from respy.python.shared.shared_constants import PRINT_FLOAT
-from respy.custom_exceptions import UserError
 from respy.python.shared.shared_auxiliary import replace_missing_values
+from respy.python.shared.shared_constants import IS_FORTRAN
 from respy.python.shared.shared_constants import IS_PARALLELISM_MPI
 from respy.python.shared.shared_constants import IS_PARALLELISM_OMP
-from respy.python.shared.shared_constants import IS_FORTRAN
+from respy.python.shared.shared_constants import OPT_EST_FORT
+from respy.python.shared.shared_constants import OPT_EST_PYTH
+from respy.python.shared.shared_constants import PRINT_FLOAT
+from respy.python.shared.data_classes import optimization_parameters
 
 
 def check_model_attributes(attr_dict):
@@ -116,7 +118,7 @@ def check_model_attributes(attr_dict):
     assert a["derivatives"] in ["FORWARD-DIFFERENCES"]
 
     # Check model parameters
-    check_model_parameters(a["optim_paras"])
+    assert check_model_parameters(optimization_parameters(**a["optim_paras"]))
 
     # Check that all parameter values are within the bounds.
     x = get_optim_paras(a["optim_paras"], a["num_paras"], "all", True)

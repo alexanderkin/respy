@@ -1,25 +1,26 @@
-from pandas.util.testing import assert_frame_equal
-import pandas as pd
-import numpy as np
-import pytest
 import copy
-
-from respy.python.shared.shared_auxiliary import dist_class_attributes
-from respy.python.solve.solve_auxiliary import pyth_create_state_space
-from respy.pre_processing.model_processing import write_init_file
-from respy.python.shared.shared_constants import IS_FORTRAN
-from respy.tests.codes.auxiliary import write_interpolation_grid
-from respy.tests.codes.random_init import generate_random_dict
-from respy.tests.codes.auxiliary import write_lagged_start
-from respy.tests.codes.auxiliary import simulate_observed
-from respy.tests.codes.auxiliary import compare_est_log
-from respy.tests.codes.random_init import generate_init
-from respy.tests.codes.auxiliary import write_edu_start
-from respy.tests.codes.auxiliary import write_draws
-from respy.tests.codes.auxiliary import write_types
-from respy import RespyCls
 from functools import partial
+
+import numpy as np
+import pandas as pd
+import pytest
+from pandas.util.testing import assert_frame_equal
+
+from respy import RespyCls
+from respy.pre_processing.model_processing import write_init_file
+from respy.python.shared.shared_auxiliary import dist_class_attributes
 from respy.python.shared.shared_constants import DECIMALS
+from respy.python.shared.shared_constants import IS_FORTRAN
+from respy.python.solve.solve_auxiliary import pyth_create_state_space
+from respy.tests.codes.auxiliary import compare_est_log
+from respy.tests.codes.auxiliary import simulate_observed
+from respy.tests.codes.auxiliary import write_draws
+from respy.tests.codes.auxiliary import write_edu_start
+from respy.tests.codes.auxiliary import write_interpolation_grid
+from respy.tests.codes.auxiliary import write_lagged_start
+from respy.tests.codes.auxiliary import write_types
+from respy.tests.codes.random_init import generate_init
+from respy.tests.codes.random_init import generate_random_dict
 
 assert_almost_equal = partial(np.testing.assert_almost_equal, decimal=DECIMALS)
 

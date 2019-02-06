@@ -1,9 +1,10 @@
 """ Module for program constants used across the RESPY package. This is
 aligned with the constants from the FORTRAN implementation.
 """
-import numpy as np
 import json
 import os
+
+import numpy as np
 
 # Obtain the root directory of the package
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))

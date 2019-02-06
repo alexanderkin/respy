@@ -2,9 +2,8 @@
 """ This script compiles and executes the upgraded file that inspired the
 RESPY package.
 """
-
-import shutil
 import os
+import shutil
 
 # Compiler options. Note that the original codes are not robust enough to
 # execute in debug mode.

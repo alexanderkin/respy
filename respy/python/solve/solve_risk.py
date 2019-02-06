@@ -1,5 +1,5 @@
 import numpy as np
-
+from numba import njit
 from respy.python.shared.shared_auxiliary import get_total_values
 
 
@@ -38,8 +38,9 @@ def construct_emax_risk(
         Array with shape (num_periods, num_individuals, num_rewards + 1)
     mapping_state_idx : np.array
         Array with shape (num_periods, num_periods, num_periods, 21, num_rewards, 1)
-    edu_spec : dict
+    edu_spec : namedtuple
         Keys are lagged, start, share, max
+    optim_paras : namedtuple
 
 
     Returns
@@ -73,7 +74,7 @@ def construct_emax_risk(
         )
 
         # Determine optimal choice
-        maximum = max(total_values)
+        maximum = np.max(total_values)
 
         # Recording expected future value
         emax += maximum
@@ -81,5 +82,4 @@ def construct_emax_risk(
     # Scaling
     emax /= num_draws_emax
 
-    # Finishing
     return emax

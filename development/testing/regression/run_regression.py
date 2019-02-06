@@ -4,24 +4,22 @@ development and refactoring efforts.
 """
 from __future__ import print_function
 
+import argparse
+import json
+import multiprocessing as mp
+import socket
 from functools import partial
 
-import multiprocessing as mp
 import numpy as np
-import argparse
-import socket
-import json
-
-from auxiliary_shared import send_notification
-from auxiliary_shared import compile_package
-
-from auxiliary_regression import create_single
 from auxiliary_regression import check_single
+from auxiliary_regression import create_single
 from auxiliary_regression import get_chunks
+from auxiliary_shared import compile_package
+from auxiliary_shared import send_notification
 
-from respy.python.shared.shared_constants import TEST_RESOURCES_DIR
-from respy.python.shared.shared_constants import DECIMALS
 from respy.pre_processing.model_processing import write_init_file
+from respy.python.shared.shared_constants import DECIMALS
+from respy.python.shared.shared_constants import TEST_RESOURCES_DIR
 from respy.tests.codes.auxiliary import simulate_observed
 
 HOSTNAME = socket.gethostname()

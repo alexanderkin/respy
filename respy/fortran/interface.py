@@ -1,16 +1,17 @@
 """ This module serves as the interface between the PYTHON code and the FORTRAN implementations.
 """
-import pandas as pd
-import numpy as np
-import subprocess
 import os
+import subprocess
+
+import numpy as np
+import pandas as pd
 
 from respy.python.shared.shared_auxiliary import dist_class_attributes
-from respy.python.shared.shared_constants import MISSING_FLOAT
-from respy.python.shared.shared_constants import OPT_EST_FORT
-from respy.python.shared.shared_constants import MISSING_INT
-from respy.python.shared.shared_constants import HUGE_FLOAT
 from respy.python.shared.shared_constants import EXEC_DIR
+from respy.python.shared.shared_constants import HUGE_FLOAT
+from respy.python.shared.shared_constants import MISSING_FLOAT
+from respy.python.shared.shared_constants import MISSING_INT
+from respy.python.shared.shared_constants import OPT_EST_FORT
 
 
 def resfort_interface(respy_obj, request, data_array=None):

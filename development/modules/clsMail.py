@@ -17,14 +17,14 @@
         mailObj.send()
 
 """
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import pickle as pkl
-import smtplib
-import socket
 import copy
 import json
 import os
+import pickle as pkl
+import smtplib
+import socket
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from socket import gethostname
 
 

@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 """Module to test the parallel implementations of the model."""
 import argparse
-from datetime import timedelta
 from datetime import datetime
+from datetime import timedelta
+
 import numpy as np
-
-from respy.python.shared.shared_constants import IS_PARALLELISM_MPI
-from respy.python.shared.shared_constants import IS_PARALLELISM_OMP
-from respy.pre_processing.model_processing import write_init_file
-
-from codes.random_init import generate_random_dict
 from codes.auxiliary import simulate_observed
+from codes.random_init import generate_random_dict
 
 from respy import RespyCls
+from respy.pre_processing.model_processing import write_init_file
+from respy.python.shared.shared_constants import IS_PARALLELISM_MPI
+from respy.python.shared.shared_constants import IS_PARALLELISM_OMP
 
 
 def run(hours):

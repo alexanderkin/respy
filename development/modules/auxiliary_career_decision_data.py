@@ -1,6 +1,6 @@
 """This module contains the auxiliary function for the data transformation."""
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 def prepare_dataset():

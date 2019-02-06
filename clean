@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """ Cleanup of directories.
 """
-
 import os
 
 os.system('git clean -d -f')

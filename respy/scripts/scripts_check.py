@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-import numpy as np
-
 import argparse
 import os
 
-from respy.python.solve.solve_auxiliary import pyth_create_state_space
-from respy.python.shared.shared_auxiliary import dist_class_attributes
-from respy.pre_processing.data_processing import process_dataset
-from respy.custom_exceptions import UserError
+import numpy as np
+
 from respy import RespyCls
+from respy.custom_exceptions import UserError
+from respy.pre_processing.data_processing import process_dataset
+from respy.python.shared.shared_auxiliary import dist_class_attributes
+from respy.python.solve.solve_auxiliary import pyth_create_state_space
 
 # module-wide variables
 ERR_MSG = " Observations not meeting model requirements."
@@ -47,7 +47,7 @@ def scripts_check(request, init_file):
     if request == "estimate":
         # Create the grid of the admissible states.
         args = (num_periods, num_types, edu_spec)
-        mapping_state_idx = pyth_create_state_space(*args)[2]
+        _, _, mapping_state_idx, _ = pyth_create_state_space(*args)
 
         # We also check the structure of the dataset.
         data_array = process_dataset(respy_obj).values
@@ -58,16 +58,16 @@ def scripts_check(request, init_file):
             # Extract observable components of state space as well as agent decision.
             exp_a, exp_b, edu, choice_lagged = data_array[j, 4:].astype(int)
 
-            # First of all, we need to ensure that all observed years of schooling are larger
-            # than the initial condition of the model.
+            # First of all, we need to ensure that all observed years of schooling are
+            # larger than the initial condition of the model.
             try:
                 np.testing.assert_equal(edu >= 0, True)
             except AssertionError:
                 raise UserError(ERR_MSG)
 
-            # Get state indicator to obtain the systematic component of the agents rewards. This
-            # might fail either because the state is simply infeasible at any period or just not
-            # defined for the particular period requested.
+            # Get state indicator to obtain the systematic component of the agents
+            # rewards. This might fail either because the state is simply infeasible at
+            # any period or just not defined for the particular period requested.
             try:
                 k = mapping_state_idx[period, exp_a, exp_b, edu, choice_lagged - 1]
                 np.testing.assert_equal(k >= 0, True)

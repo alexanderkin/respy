@@ -1,17 +1,16 @@
 import numpy as np
 import pytest
 
-from respy.python.shared.shared_auxiliary import back_out_systematic_wages
-from respy.python.solve.solve_auxiliary import calculate_wages_systematic
-from respy.python.shared.shared_auxiliary import dist_class_attributes
-from respy.python.solve.solve_auxiliary import construct_covariates
-from respy.python.shared.shared_auxiliary import distribute_parameters
-from respy.python.shared.shared_auxiliary import get_total_values
-from respy.python.shared.shared_auxiliary import get_optim_paras
-from respy.pre_processing.model_processing import write_init_file
-
-from respy.tests.codes.random_init import generate_init
 from respy import RespyCls
+from respy.pre_processing.model_processing import write_init_file
+from respy.python.shared.shared_auxiliary import back_out_systematic_wages
+from respy.python.shared.shared_auxiliary import dist_class_attributes
+from respy.python.shared.shared_auxiliary import distribute_parameters
+from respy.python.shared.shared_auxiliary import get_optim_paras
+from respy.python.shared.shared_auxiliary import get_total_values
+from respy.python.solve.solve_auxiliary import calculate_wages_systematic
+from respy.python.solve.solve_auxiliary import construct_covariates
+from respy.tests.codes.random_init import generate_init
 
 
 class TestClass(object):
@@ -152,7 +151,13 @@ class TestClass(object):
         respy_obj = RespyCls("test.respy.ini")
         respy_obj, _ = respy_obj.simulate()
 
-        periods_rewards_systematic, states_number_period, states_all, num_periods, optim_paras = dist_class_attributes(
+        (
+            periods_rewards_systematic,
+            states_number_period,
+            states_all,
+            num_periods,
+            optim_paras,
+        ) = dist_class_attributes(
             respy_obj,
             "periods_rewards_systematic",
             "states_number_period",
@@ -172,7 +177,12 @@ class TestClass(object):
             covariates = construct_covariates(
                 exp_a, exp_b, edu, choice_lagged, type_, period
             )
-            wages = calculate_wages_systematic(covariates, optim_paras)
+            wages = calculate_wages_systematic(
+                covariates,
+                optim_paras.coeffs_a,
+                optim_paras.coeffs_b,
+                optim_paras.type_shifts,
+            )
 
             args = (rewards_systematic, exp_a, exp_b, edu, choice_lagged, optim_paras)
             rslt = back_out_systematic_wages(*args)
@@ -194,7 +204,16 @@ class TestClass(object):
         respy_obj = RespyCls("test.respy.ini")
         respy_obj, _ = respy_obj.simulate()
 
-        num_periods, optim_paras, edu_spec, mapping_state_idx, periods_emax, states_all, periods_rewards_systematic, states_number_period = dist_class_attributes(
+        (
+            num_periods,
+            optim_paras,
+            edu_spec,
+            mapping_state_idx,
+            periods_emax,
+            states_all,
+            periods_rewards_systematic,
+            states_number_period,
+        ) = dist_class_attributes(
             respy_obj,
             "num_periods",
             "optim_paras",

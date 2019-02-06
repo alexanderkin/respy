@@ -1,19 +1,18 @@
-from statsmodels.tools.eval_measures import rmse
-from copy import deepcopy
-import numpy as np
-import shlex
 import os
+import shlex
+from copy import deepcopy
 
-from auxiliary_shared import update_class_instance
+import numpy as np
 from auxiliary_shared import aggregate_information
-from auxiliary_shared import send_notification
 from auxiliary_shared import cleanup
-
+from auxiliary_shared import send_notification
+from auxiliary_shared import update_class_instance
 from config_analysis import SPEC_DIR
+from statsmodels.tools.eval_measures import rmse
 
-from respy.scripts.scripts_simulate import scripts_simulate
-from respy.scripts.scripts_compare import scripts_compare
 import respy
+from respy.scripts.scripts_compare import scripts_compare
+from respy.scripts.scripts_simulate import scripts_simulate
 
 
 def run(spec_dict):

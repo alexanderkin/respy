@@ -1,11 +1,12 @@
-import pandas as pd
-import numpy as np
 import copy
 import os
 
-from respy.python.shared.shared_auxiliary import get_conditional_probabilities
-from respy.python.shared.shared_auxiliary import dist_class_attributes
+import numpy as np
+import pandas as pd
+
 from respy.pre_processing.data_checking import check_estimation_dataset
+from respy.python.shared.shared_auxiliary import dist_class_attributes
+from respy.python.shared.shared_auxiliary import get_conditional_probabilities
 
 
 def construct_transition_matrix(base_df):
@@ -36,6 +37,9 @@ def get_final_education(agent):
 
 def write_info(respy_obj, data_frame):
     """ Write information about the simulated economy.
+
+    TODO: Transform optim_paras eventually.
+
     """
     # Distribute class attributes
     optim_paras, num_types, file_sim, seed_sim, edu_spec = dist_class_attributes(
@@ -159,7 +163,7 @@ def write_info(respy_obj, data_frame):
         file_.write("\n\n   Schooling by Type\n\n")
 
         cat_schl = pd.Categorical(
-            data_frame["Years_Schooling"][:, 0], categories=edu_spec["start"]
+            data_frame["Years_Schooling"][:, 0], categories=edu_spec.start
         )
         cat_type = pd.Categorical(data_frame["Type"][:, 0], categories=range(num_types))
 
@@ -188,7 +192,7 @@ def write_info(respy_obj, data_frame):
             file_.write(fmt_.format(*line))
 
             fmt_ = "   {:>10}    " + "{:25.5f}" * num_columns + "\n"
-            for i, start in enumerate(edu_spec["start"]):
+            for i, start in enumerate(edu_spec.start):
                 line = [start] + info[i, :].tolist()
                 file_.write(fmt_.format(*line))
 
@@ -200,7 +204,7 @@ def write_info(respy_obj, data_frame):
         # We want to provide information on the value of the lagged activity when
         # entering the model based on the level of initial education.
         cat_1 = pd.Categorical(
-            data_frame["Years_Schooling"][:, 0], categories=edu_spec["start"]
+            data_frame["Years_Schooling"][:, 0], categories=edu_spec.start
         )
         cat_2 = pd.Categorical(data_frame["Lagged_Choice"][:, 0], categories=[3, 4])
         info = pd.crosstab(cat_1, cat_2, normalize=normalize, dropna=False).values
@@ -208,7 +212,7 @@ def write_info(respy_obj, data_frame):
         file_.write("\n\n   Initial Lagged Activity by Schooling\n\n")
         fmt_ = "\n   {:>10}" + "    {:>25}" + "{:>25}\n\n"
         file_.write(fmt_.format(*["Schooling", "Lagged Schooling", "Lagged Home"]))
-        for i, edu_start in enumerate(edu_spec["start"]):
+        for i, edu_start in enumerate(edu_spec.start):
             fmt_ = "   {:>10}" + "    {:25.5f}" + "{:25.5f}\n"
             file_.write(fmt_.format(*[edu_start] + info[i].tolist()))
 
@@ -267,8 +271,10 @@ def format_integer(x):
 
 def get_estimation_vector(optim_paras):
     """ Construct the vector estimation arguments.
+
+    TODO: Transform optim_paras eventually.
+
     """
-    # Auxiliary objects
     num_types = int(len(optim_paras["type_shares"]) / 2)
 
     # Collect parameters
@@ -284,13 +290,13 @@ def get_estimation_vector(optim_paras):
     vector += optim_paras["shocks_cholesky"][3, :4].tolist()
     vector += optim_paras["type_shares"].tolist()
 
+    # TODO: Make more performant.
     for i in range(1, num_types):
         vector += optim_paras["type_shifts"][i, :].tolist()
 
     # Type conversion
     vector = np.array(vector)
 
-    # Finishing
     return vector
 
 
@@ -367,16 +373,16 @@ def sort_edu_spec(edu_spec):
     """ This function sorts the dictionary that provides the information about initial
     education. It adjusts the order of the shares accordingly.
     """
-    edu_start_ordered = sorted(edu_spec["start"])
+    edu_start_ordered = sorted(edu_spec.start)
 
     edu_share_ordered = []
     for start in edu_start_ordered:
-        idx = edu_spec["start"].index(start)
-        edu_share_ordered += [edu_spec["share"][idx]]
+        idx = edu_spec.start.index(start)
+        edu_share_ordered += [edu_spec.share[idx]]
 
     edu_spec_ordered = copy.deepcopy(edu_spec)
-    edu_spec_ordered["start"] = edu_start_ordered
-    edu_spec_ordered["share"] = edu_share_ordered
+    edu_spec_ordered.start = edu_start_ordered
+    edu_spec_ordered.share = edu_share_ordered
 
     return edu_spec_ordered
 
@@ -436,8 +442,8 @@ def get_random_lagged_start(edu_spec, num_agents_sim, edu_start, is_debug):
     else:
         lagged_start = []
         for i in range(num_agents_sim):
-            idx = edu_spec["start"].index(edu_start[i])
-            probs = edu_spec["lagged"][idx], 1 - edu_spec["lagged"][idx]
+            idx = edu_spec.start.index(edu_start[i])
+            probs = edu_spec.lagged[idx], 1 - edu_spec.lagged[idx]
             lagged_start += np.random.choice([3, 4], p=probs, size=1).tolist()
 
     # If we only have one individual, we need to ensure that activities are a vector.

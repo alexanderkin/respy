@@ -1,18 +1,15 @@
+import argparse
+import os
+import random
+import socket
 import string
+import subprocess
+import sys
 from string import Formatter
 
-import subprocess
-import argparse
-import socket
-import sys
-import os
-
 import numpy as np
-import random
-
-from config import PACKAGE_DIR
-
 from clsMail import MailCls
+from config import PACKAGE_DIR
 
 
 def update_class_instance(respy_obj, spec_dict):
@@ -21,8 +18,8 @@ def update_class_instance(respy_obj, spec_dict):
 
     respy_obj.unlock()
 
-    # Varying the baseline level of ambiguity requires special case. The same is true for the
-    # discount rate.
+    # Varying the baseline level of ambiguity requires special case. The same is true
+    # for the discount rate.
     if "level" in spec_dict["update"].keys():
         respy_obj.attr["optim_paras"]["level"] = np.array(
             [spec_dict["update"]["level"]]

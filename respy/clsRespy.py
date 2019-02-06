@@ -1,39 +1,35 @@
-import pickle as pkl
-import numpy as np
-import pandas as pd
+import atexit
 import copy
 import os
-import atexit
+import pickle as pkl
 
-from respy.pre_processing.model_processing import write_init_file
-from respy.python.shared.shared_auxiliary import distribute_parameters
-from respy.python.shared.shared_auxiliary import dist_class_attributes
-from respy.python.shared.shared_auxiliary import remove_scratch
+import numpy as np
+import pandas as pd
 
-from respy.python.shared.shared_constants import OPT_EST_FORT
-from respy.python.shared.shared_constants import OPT_EST_PYTH
-from respy.pre_processing.model_processing import (
-    read_init_file,
-    convert_init_dict_to_attr_dict,
-    convert_attr_dict_to_init_dict,
-)
-from respy.pre_processing.model_checking import (
-    check_model_attributes,
-    check_model_solution,
-)
 from respy.custom_exceptions import UserError
-from respy.python.interface import respy_interface
 from respy.fortran.interface import resfort_interface
-from respy.python.record.record_estimation import record_estimation_sample
-from respy.python.shared.shared_auxiliary import get_est_info
 from respy.pre_processing.data_processing import process_dataset
+from respy.pre_processing.model_checking import check_model_attributes
+from respy.pre_processing.model_checking import check_model_solution
+from respy.pre_processing.model_processing import convert_attr_dict_to_init_dict
+from respy.pre_processing.model_processing import convert_init_dict_to_attr_dict
+from respy.pre_processing.model_processing import read_init_file
+from respy.pre_processing.model_processing import write_init_file
+from respy.python.interface import respy_interface
+from respy.python.record.record_estimation import record_estimation_sample
+from respy.python.shared.shared_auxiliary import add_solution
+from respy.python.shared.shared_auxiliary import dist_class_attributes
+from respy.python.shared.shared_auxiliary import distribute_parameters
+from respy.python.shared.shared_auxiliary import get_est_info
+from respy.python.shared.shared_auxiliary import remove_scratch
 from respy.python.shared.shared_auxiliary import replace_missing_values
-from respy.python.simulate.simulate_auxiliary import check_dataset_sim
 from respy.python.shared.shared_constants import DATA_FORMATS_SIM
 from respy.python.shared.shared_constants import DATA_LABELS_SIM
+from respy.python.shared.shared_constants import OPT_EST_FORT
+from respy.python.shared.shared_constants import OPT_EST_PYTH
+from respy.python.simulate.simulate_auxiliary import check_dataset_sim
 from respy.python.simulate.simulate_auxiliary import write_info
 from respy.python.simulate.simulate_auxiliary import write_out
-from respy.python.shared.shared_auxiliary import add_solution
 
 
 class RespyCls(object):
@@ -183,7 +179,15 @@ class RespyCls(object):
         assert not os.path.exists(".estimation.respy.scratch")
 
         # Distribute class attributes
-        optimizer_options, optimizer_used, optim_paras, version, maxfun, num_paras, file_est = dist_class_attributes(
+        (
+            optimizer_options,
+            optimizer_used,
+            optim_paras,
+            version,
+            maxfun,
+            num_paras,
+            file_est,
+        ) = dist_class_attributes(
             self,
             "optimizer_options",
             "optimizer_used",
@@ -231,9 +235,9 @@ class RespyCls(object):
         atexit.register(remove_scratch, ".estimation.respy.scratch")
         open(".estimation.respy.scratch", "w").close()
 
-        # Read in estimation dataset. It only reads in the number of agents
-        # requested for the estimation (or all available, depending on which is
-        # less). It allows to read in only a subset of the initial conditions.
+        # Read in estimation dataset. It only reads in the number of agents requested
+        # for the estimation (or all available, depending on which is less). It allows
+        # to read in only a subset of the initial conditions.
         data_frame = process_dataset(self)
         record_estimation_sample(data_frame)
         data_array = data_frame.values

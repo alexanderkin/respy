@@ -1,19 +1,19 @@
 import numpy as np
 
 from respy.python.record.record_simulation import record_simulation_progress
-from respy.python.simulate.simulate_auxiliary import get_random_lagged_start
-from respy.python.shared.shared_auxiliary import back_out_systematic_wages
-from respy.python.shared.shared_auxiliary import calculate_rewards_general
-from respy.python.shared.shared_auxiliary import calculate_rewards_common
 from respy.python.record.record_simulation import record_simulation_start
-from respy.python.simulate.simulate_auxiliary import get_random_edu_start
 from respy.python.record.record_simulation import record_simulation_stop
-from respy.python.shared.shared_auxiliary import transform_disturbances
-from respy.python.simulate.simulate_auxiliary import get_random_types
+from respy.python.shared.shared_auxiliary import back_out_systematic_wages
+from respy.python.shared.shared_auxiliary import calculate_rewards_common
+from respy.python.shared.shared_auxiliary import calculate_rewards_general
 from respy.python.shared.shared_auxiliary import construct_covariates
 from respy.python.shared.shared_auxiliary import get_total_values
-from respy.python.shared.shared_constants import MISSING_FLOAT
+from respy.python.shared.shared_auxiliary import transform_disturbances
 from respy.python.shared.shared_constants import HUGE_FLOAT
+from respy.python.shared.shared_constants import MISSING_FLOAT
+from respy.python.simulate.simulate_auxiliary import get_random_edu_start
+from respy.python.simulate.simulate_auxiliary import get_random_lagged_start
+from respy.python.simulate.simulate_auxiliary import get_random_types
 
 
 def pyth_simulate(
@@ -33,18 +33,17 @@ def pyth_simulate(
 ):
     """ Wrapper for PYTHON and F2PY implementation of sample simulation.
     """
-
     record_simulation_start(num_agents_sim, seed_sim, file_sim)
 
     # Standard deviates transformed to the distributions relevant for the agents actual
     # decision making as traversing the tree.
     periods_draws_sims_transformed = np.full((num_periods, num_agents_sim, 4), np.nan)
 
+    # TODO: Replace loop with array routine. Make sure that non-three-dim calls still
+    # work.
     for period in range(num_periods):
         periods_draws_sims_transformed[period, :, :] = transform_disturbances(
-            periods_draws_sims[period, :, :],
-            np.zeros(4),
-            optim_paras["shocks_cholesky"],
+            periods_draws_sims[period, :, :], np.zeros(4), optim_paras.shocks_cholesky
         )
 
     # We also need to sample the set of initial conditions.
@@ -109,7 +108,7 @@ def pyth_simulate(
             # otherwise dominates the interpolation equation. The parameter
             # INADMISSIBILITY_PENALTY is a compromise. It is only relevant in very
             # constructed cases.
-            if edu >= edu_spec["max"]:
+            if edu >= edu_spec.max:
                 total_values[2] = -HUGE_FLOAT
 
             # Determine optimal choice
@@ -140,7 +139,7 @@ def pyth_simulate(
             dataset[count, 9:13] = total_values
             dataset[count, 13:17] = rewards_systematic
             dataset[count, 17:21] = draws
-            dataset[count, 21:22] = optim_paras["delta"]
+            dataset[count, 21:22] = optim_paras.delta
 
             # For testing purposes, we also explicitly include the general reward
             # component, the common component, and the immediate ex post rewards.
@@ -148,12 +147,13 @@ def pyth_simulate(
                 exp_a, exp_b, edu, choice_lagged, type_, period
             )
             dataset[count, 22:24] = calculate_rewards_general(covariates, optim_paras)
-            dataset[count, 24:25] = calculate_rewards_common(covariates, optim_paras)
+            dataset[count, 24:25] = calculate_rewards_common(
+                covariates, optim_paras.coeffs_common
+            )
             dataset[count, 25:29] = rewards_ex_post
 
             # Update work experiences or education
-            if max_idx in [0, 1, 2]:
-                current_state[max_idx] += 1
+            current_state[max_idx] += 1 if max_idx in [0, 1, 2] else 0
 
             # Update lagged activity variable.
             current_state[3] = max_idx + 1
@@ -163,5 +163,4 @@ def pyth_simulate(
 
     record_simulation_stop(file_sim)
 
-    # Finishing
     return dataset

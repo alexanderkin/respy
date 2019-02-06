@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 """ Script to start development test battery for the RESPY package.
 """
-from datetime import timedelta
-from datetime import datetime
-import numpy as np
-import traceback
-import importlib
 import argparse
+import importlib
+import os
 import random
 import sys
-import os
+import traceback
+from datetime import datetime
+from datetime import timedelta
+
+import numpy as np
 
 # RESPY testing codes. The import of the PYTEST configuration file ensures that the PYTHONPATH is
 #  modified to allow for the use of the tests..

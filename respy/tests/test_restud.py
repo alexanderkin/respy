@@ -1,22 +1,23 @@
+import os
+import shlex
+import shutil
+import subprocess
+
+import numpy as np
+import pandas as pd
+import pytest
 from pandas.util.testing import assert_frame_equal
 from scipy.stats import wishart
-import pandas as pd
-import numpy as np
-import subprocess
-import pytest
-import shutil
-import shlex
-import os
 
+import respy
+from respy import RespyCls
+from respy.pre_processing.model_processing import write_init_file
 from respy.python.shared.shared_auxiliary import dist_class_attributes
+from respy.python.shared.shared_constants import IS_FORTRAN
 from respy.python.shared.shared_constants import TEST_RESOURCES_BUILD
 from respy.python.shared.shared_constants import TEST_RESOURCES_DIR
-from respy.pre_processing.model_processing import write_init_file
-from respy.python.shared.shared_constants import IS_FORTRAN
-from respy.tests.codes.random_init import generate_random_dict
 from respy.tests.codes.auxiliary import simulate_observed
-from respy import RespyCls
-import respy
+from respy.tests.codes.random_init import generate_random_dict
 
 
 COLUMNS = []

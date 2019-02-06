@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 """This script runs a series of tests that are required for any pull request to be merged."""
-import respy
-import sys
 import os
+import sys
 from socket import gethostname
+
+import respy
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 for dirname in ["regression", "property", "release", "robustness", "parallelism"]:

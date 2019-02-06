@@ -2,18 +2,17 @@
 """
 import numpy as np
 
+from respy.pre_processing.model_processing import write_init_file
+from respy.python.shared.shared_auxiliary import get_valid_bounds
+from respy.python.shared.shared_constants import IS_FORTRAN
 from respy.python.shared.shared_constants import IS_PARALLELISM_MPI
 from respy.python.shared.shared_constants import IS_PARALLELISM_OMP
-from respy.python.shared.shared_auxiliary import get_valid_bounds
-from respy.pre_processing.model_processing import write_init_file
 from respy.python.shared.shared_constants import OPT_EST_FORT
 from respy.python.shared.shared_constants import OPT_EST_PYTH
-from respy.python.shared.shared_constants import IS_FORTRAN
-
-from respy.tests.codes.process_constraints import process_constraints
 from respy.tests.codes.auxiliary import get_valid_shares
 from respy.tests.codes.auxiliary import get_valid_values
 from respy.tests.codes.auxiliary import OPTIMIZERS_EST
+from respy.tests.codes.process_constraints import process_constraints
 
 # We need to impose some version-dependent constraints. Otherwise the execution times for some
 # tasks just takes too long.

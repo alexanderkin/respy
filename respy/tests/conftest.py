@@ -1,10 +1,10 @@
 """ This module provides the fixtures for the PYTEST runs.
 """
-import numpy as np
-
-import tempfile
-import pytest
 import os
+import tempfile
+
+import numpy as np
+import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)

@@ -11,12 +11,11 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
-import sphinx_rtd_theme
-
+import os
 import socket
 import sys
-import os
+
+import sphinx_rtd_theme
 
 # Set variable so that todos are shown in local build
 on_rtd = os.environ.get("READTHEDOCS") == "True"

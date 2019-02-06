@@ -1,13 +1,13 @@
-import warnings
-import sys
 import os
+import sys
+import warnings
 
 import numpy as np
 import pytest
 
-from respy.python.shared.shared_constants import ROOT_DIR
-from respy.python.shared.shared_constants import IS_DEBUG
 from respy.clsRespy import RespyCls  # noqa: F401
+from respy.python.shared.shared_constants import IS_DEBUG
+from respy.python.shared.shared_constants import ROOT_DIR
 
 # We only maintain the code base for modern Python.
 major, minor = sys.version_info[:2]

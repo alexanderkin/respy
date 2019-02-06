@@ -1,28 +1,67 @@
 import os
 import shlex
 
-import statsmodels.api as sm
 import numpy as np
+import statsmodels.api as sm
+from numba import njit, objmode
 
 from respy.python.record.record_solution import record_solution_prediction
-from respy.python.shared.shared_auxiliary import calculate_rewards_general
-from respy.python.shared.shared_auxiliary import calculate_rewards_common
 from respy.python.record.record_solution import record_solution_progress
-from respy.python.shared.shared_auxiliary import transform_disturbances
+from respy.python.shared.shared_auxiliary import calculate_rewards_common
+from respy.python.shared.shared_auxiliary import calculate_rewards_general
 from respy.python.shared.shared_auxiliary import construct_covariates
 from respy.python.shared.shared_auxiliary import get_total_values
-from respy.python.shared.shared_constants import MISSING_FLOAT
-from respy.python.solve.solve_risk import construct_emax_risk
-from respy.python.shared.shared_constants import MISSING_INT
+from respy.python.shared.shared_auxiliary import transform_disturbances
 from respy.python.shared.shared_constants import HUGE_FLOAT
+from respy.python.shared.shared_constants import MISSING_FLOAT
+from respy.python.shared.shared_constants import MISSING_INT
+from respy.python.solve.solve_risk import construct_emax_risk
+import respy.python.shared.fast_routines as fr
+from numba import jit
 
 
 def pyth_create_state_space(num_periods, num_types, edu_spec):
     """ Create grid for state space.
+
+    Parameters
+    ----------
+    num_periods : int
+    num_types
+    edu_spec : namedtuple
+        Contains educational specification with keys lagged, start, share and max.
+
+    Returns
+    -------
+    states_all : np.array
+        Array with shape (num_periods, 100000, 5)
+    states_number_period
+    mapping_state_idx
+    max_states_period
+
+    # TODO: Cannot be jitted until edu_spec is not dict anymore.
+
+    # TODO: Deprecate return argument max_states_period as it can be derived from
+    # states_number_period.
+
+    Examples
+    --------
+    >>> from respy.python.shared.data_classes import education_specification
+    >>> num_periods = 40
+    >>> num_types = 1
+    >>> edu_spec = education_specification(
+    ...     lagged=[1.0], start=[10], share=[1.0], max=20
+    ... )
+    >>> res = pyth_create_state_space(num_periods, num_types, edu_spec)
+    >>> assert res[0].shape == (40, 100000, 5)
+    >>> assert res[1].shape == (40,)
+    >>> assert res[2].shape == (40, 40, 40, 21, 4, 1)
+    >>> assert res[3] == 26348
+
     """
     # Auxiliary information
-    min_idx = edu_spec["max"] + 1
+    min_idx = edu_spec.max + 1
 
+    # TODO: We should not hardcode dimensions. Especially 100000
     # Array for possible realization of state space by period
     states_all = np.full((num_periods, 100000, 5), MISSING_INT)
 
@@ -43,7 +82,7 @@ def pyth_create_state_space(num_periods, num_types, edu_spec):
         for type_ in range(num_types):
 
             # Loop overall all initial levels of schooling
-            for edu_start in edu_spec["start"]:
+            for edu_start in edu_spec.start:
 
                 # Loop over all admissible work experiences for Occupation A
                 for exp_a in range(num_periods + 1):
@@ -63,7 +102,7 @@ def pyth_create_state_space(num_periods, num_types, edu_spec):
 
                             # Agent cannot attain more additional education than
                             # (EDU_MAX - EDU_START).
-                            if edu_add > (edu_spec["max"] - edu_start):
+                            if edu_add > (edu_spec.max - edu_start):
                                 continue
 
                             # Loop over all admissible values for the lagged activity:
@@ -157,8 +196,7 @@ def pyth_create_state_space(num_periods, num_types, edu_spec):
         # Record maximum number of state space realizations by time period
         states_number_period[period] = k
 
-    # Auxiliary objects
-    max_states_period = max(states_number_period)
+    max_states_period = np.max(states_number_period)
 
     return (states_all, states_number_period, mapping_state_idx, max_states_period)
 
@@ -187,7 +225,7 @@ def pyth_calculate_rewards_systematic(
     periods_rewards_systematic = np.full(shape, MISSING_FLOAT)
 
     # Calculate systematic instantaneous rewards
-    for period in reversed(range(num_periods)):
+    for period in range(num_periods - 1, -1, -1):
 
         # Loop over all possible states
         for k in range(states_number_period[period]):
@@ -205,36 +243,39 @@ def pyth_calculate_rewards_systematic(
 
             # Calculate common and general rewards component.
             rewards_general = calculate_rewards_general(covariates, optim_paras)
-            rewards_common = calculate_rewards_common(covariates, optim_paras)
+            rewards_common = calculate_rewards_common(
+                covariates, optim_paras.coeffs_common
+            )
 
             # Calculate the systematic part of OCCUPATION A and OCCUPATION B rewards.
             # These are defined in a general sense, where not only wages matter.
-            wages = calculate_wages_systematic(covariates, optim_paras)
+            wages = calculate_wages_systematic(
+                covariates,
+                optim_paras.coeffs_a,
+                optim_paras.coeffs_b,
+                optim_paras.type_shifts,
+            )
 
             rewards[:2] = wages[:2] + rewards_general[:2]
 
             # Calculate systematic part of SCHOOL rewards
             covars_edu = []
             covars_edu += [1]
-            covars_edu += [covariates["hs_graduate"]]
-            covars_edu += [covariates["co_graduate"]]
-            covars_edu += [covariates["is_return_not_high_school"]]
-            covars_edu += [covariates["is_return_high_school"]]
-            covars_edu += [covariates["period"]]
-            covars_edu += [covariates["is_minor"]]
+            covars_edu += list(covariates[15:19])  # hs or co graduate and returns
+            covars_edu += [covariates.period]
+            covars_edu += [covariates.is_minor]
 
-            rewards[2] = np.dot(optim_paras["coeffs_edu"], covars_edu)
+            rewards[2] = optim_paras.coeffs_edu.dot(covars_edu)
 
             # Calculate systematic part of HOME
             covars_home = []
             covars_home += [1]
-            covars_home += [covariates["is_young_adult"]]  # Age 18 - 20
-            covars_home += [covariates["is_adult"]]  # Age 21 and over
+            covars_home += list(covariates[20:22])  # Age 18 - 20 or over 21
 
-            rewards[3] = np.dot(optim_paras["coeffs_home"], covars_home)
+            rewards[3] = optim_paras.coeffs_home.dot(covars_home)
 
             # Now we add the type-specific deviation for SCHOOL and HOME.
-            rewards[2:4] = rewards[2:4] + optim_paras["type_shifts"][type_, 2:4]
+            rewards[2:4] = rewards[2:4] + optim_paras.type_shifts[type_, 2:4]
 
             # We can now also added the common component of rewards.
             rewards[:4] = rewards[:4] + rewards_common
@@ -262,17 +303,21 @@ def pyth_backward_induction(
     file_sim,
     is_write,
 ):
-    """ Backward induction procedure. There are two main threads to this function
-    depending on whether interpolation is requested or not.
+    """ Backward induction procedure.
+
+    There are two main threads to this function depending on whether interpolation is
+    requested or not.
+
+    # TODO: Many 4's are hardcoded.
 
     """
     # Initialize containers, which contain a lot of missing values as we capture the
     # tree structure in arrays of fixed dimension.
-    i, j = num_periods, max_states_period
-    periods_emax = np.full((i, j), MISSING_FLOAT)
+    periods_emax = np.full((num_periods, max_states_period), MISSING_FLOAT)
 
     if is_myopic:
-        record_solution_progress(-2, file_sim)
+        with objmode():
+            record_solution_progress(-2, file_sim)
 
         # TODO: Find beautiful way to mask different lengths of rows and set them to 0.
         for period, num_states in enumerate(states_number_period):
@@ -281,7 +326,7 @@ def pyth_backward_induction(
         return periods_emax
 
     # Construct auxiliary objects
-    shocks_cov = optim_paras["shocks_cholesky"].dot(optim_paras["shocks_cholesky"].T)
+    shocks_cov = optim_paras.shocks_cholesky.dot(optim_paras.shocks_cholesky.T)
 
     # Auxiliary objects. These shifts are used to determine the expected values of the
     # two labor market alternatives. These are log normal distributed and thus the draws
@@ -293,7 +338,7 @@ def pyth_backward_induction(
     periods_emax = np.full((num_periods, max_states_period), MISSING_FLOAT)
 
     # Iterate backward through all periods
-    for period in reversed(range(num_periods)):
+    for period in range(num_periods - 1, -1, -1):
 
         # Extract auxiliary objects
         draws_emax_standard = periods_draws_emax[period, :, :]
@@ -302,11 +347,12 @@ def pyth_backward_induction(
         # Treatment of the disturbances for the risk-only case is straightforward. Their
         # distribution is fixed once and for all.
         draws_emax_risk = transform_disturbances(
-            draws_emax_standard, np.zeros(4), optim_paras["shocks_cholesky"]
+            draws_emax_standard, np.zeros(4), optim_paras.shocks_cholesky
         )
 
         if is_write:
-            record_solution_progress(4, file_sim, period, num_states)
+            with objmode():
+                record_solution_progress(4, file_sim, period, num_states)
 
         # The number of interpolation points is the same for all periods. Thus, for some
         # periods the number of interpolation points is larger than the actual number of
@@ -365,11 +411,9 @@ def pyth_backward_induction(
             periods_emax[period, :num_states] = predictions
 
         else:
-
             # Loop over all possible states
             for k in range(states_number_period[period]):
 
-                # Extract rewards
                 rewards_systematic = periods_rewards_systematic[period, k, :]
 
                 emax = construct_emax_risk(
@@ -386,7 +430,6 @@ def pyth_backward_induction(
                     optim_paras,
                 )
 
-                # Store results
                 periods_emax[period, k] = emax
 
     return periods_emax
@@ -406,18 +449,17 @@ def get_simulated_indicator(num_points_interp, num_candidates, period, is_debug)
     is_simulated[interpolation_points] = True
 
     # Check for debugging cases.
-    is_standardized = is_debug and os.path.exists(".interpolation.respy.test")
-    if is_standardized:
-        with open(".interpolation.respy.test", "r") as file_:
-            indicators = []
-            for line in file_:
-                indicators += [(shlex.split(line)[period] == "True")]
-        is_simulated = indicators[:num_candidates]
+    with objmode("bool"):
+        is_standardized = is_debug and os.path.exists(".interpolation.respy.test")
+        if is_standardized:
+            with open(".interpolation.respy.test", "r") as file_:
+                indicators = []
+                for line in file_:
+                    indicators += [(shlex.split(line)[period] == "True")]
+            is_simulated = indicators[:num_candidates]
 
-    # Type conversion
     is_simulated = np.array(is_simulated)
 
-    # Finishing
     return is_simulated
 
 
@@ -462,7 +504,7 @@ def get_exogenous_variables(
         )
 
         # Implement level shifts
-        maxe[k] = max(total_values)
+        maxe[k] = np.max(total_values)
 
         diff = maxe[k] - total_values
 
@@ -525,6 +567,7 @@ def get_endogenous_variable(
     return endogenous_variable
 
 
+@jit(nopython=False)
 def get_predictions(endogenous, exogenous, maxe, is_simulated, file_sim, is_write):
     """ Fit an OLS regression of the exogenous variables on the endogenous variables and
     use the results to predict the endogenous variables for all points in the state
@@ -538,7 +581,7 @@ def get_predictions(endogenous, exogenous, maxe, is_simulated, file_sim, is_writ
     # Use the model to predict EMAX for all states. As in Keane & Wolpin (1994),
     # negative predictions are truncated to zero.
     endogenous_predicted = results.predict(exogenous)
-    endogenous_predicted = np.clip(endogenous_predicted, 0.00, None)
+    endogenous_predicted = fr.clip(endogenous_predicted, 0.00, None)
 
     # Construct predicted EMAX for all states and the replace interpolation points with
     # simulated values.
@@ -579,43 +622,72 @@ def check_input(respy_obj):
     return True
 
 
-def calculate_wages_systematic(covariates, optim_paras):
+def calculate_wages_systematic(covariates, coeffs_a, coeffs_b, type_shifts):
     """ Calculate the systematic component of wages.
+
+    Examples
+    --------
+    >>> from respy.python.shared.data_classes import Covariates
+    >>> covariates = Covariates(*[
+    ...     0, 0, 0, 0, 0, 4, 1, 1, 0, 0, 39, 0, 0, 0, 10, 0, 0, 1, 0, 0, 0, 1
+    ... ])
+    >>> coeffs_a = np.array([
+    ...     9.21e+00,  3.80e-02,  3.30e-02, -5.00e-04,  0.00e+00, -0.00e+00,
+    ...     0.00e+00, -0.00e+00,  0.00e+00,  0.00e+00,  0.00e+00,  0.00e+00,
+    ...     0.00e+00,  0.00e+00,  0.00e+00
+    ... ])
+    >>> coeffs_b = np.array([
+    ...     8.48e+00,  7.00e-02,  2.20e-02, -5.00e-04,  6.70e-02, -1.00e-03,
+    ...     0.00e+00, -0.00e+00,  0.00e+00,  0.00e+00,  0.00e+00,  0.00e+00,
+    ...     0.00e+00,  0.00e+00,  0.00e+00
+    ... ])
+    >>> type_shifts = np.zeros((1, 4))
+    >>> calculate_wages_systematic(covariates, coeffs_a, coeffs_b, type_shifts)
+    array([14617.86953434,  9701.15277293])
+
     """
     # Collect all relevant covariates
-    covars_wages = []
-    covars_wages += [1.0]
-    covars_wages += [covariates["edu"]]
-    covars_wages += [covariates["exp_a"]]
-    covars_wages += [(covariates["exp_a"] ** 2) / 100.00]
-    covars_wages += [covariates["exp_b"]]
-    covars_wages += [(covariates["exp_b"] ** 2) / 100.00]
-    covars_wages += [covariates["hs_graduate"]]
-    covars_wages += [covariates["co_graduate"]]
-    covars_wages += [covariates["period"]]
-    covars_wages += [covariates["is_minor"]]
-    covars_wages += [None]
-    covars_wages += [None]
+    covs = np.array(
+        [
+            [
+                1,
+                covariates.edu,
+                covariates.exp_a,
+                covariates.exp_a ** 2 / 100,
+                covariates.exp_b,
+                covariates.exp_b ** 2 / 100,
+                covariates.hs_graduate,
+                covariates.co_graduate,
+                covariates.period,
+                covariates.is_minor,
+            ]
+        ]
+        * 2
+    )
 
-    # This used for testing purposes, where we compare the results from the RESPY
-    # package to the original RESTUD program.
-    if os.path.exists(".restud.respy.scratch"):
-        covars_wages[3] *= 100.00
-        covars_wages[5] *= 100.00
+    # TODO: OBJECT_MODE, performance critical
 
-    # Calculate systematic part of wages in OCCUPATION A and OCCUPATION B
-    wages = np.full(2, np.nan)
+    # Revert the scaling. This used for testing purposes, where we compare the results
+    # from the RESPY package to the original RESTUD program.
+    with objmode():
+        if os.path.exists(".restud.respy.scratch"):
+            covs[:, 3] *= 100.00
+            covs[:, 5] *= 100.00
 
-    covars_wages[-2:] = [covariates["any_exp_a"], covariates["work_a_lagged"]]
-    wage = np.exp(np.dot(optim_paras["coeffs_a"][:12], covars_wages))
-    wages[0] = np.clip(wage, 0.0, HUGE_FLOAT)
+    covs_occ = np.array(
+        [
+            [covariates.any_exp_a, covariates.work_a_lagged],
+            [covariates.any_exp_b, covariates.work_a_lagged],
+        ]
+    )
+    covs = np.hstack((covs, covs_occ))
 
-    covars_wages[-2:] = [covariates["any_exp_b"], covariates["work_b_lagged"]]
-    wage = np.exp(np.dot(optim_paras["coeffs_b"][:12], covars_wages))
-    wages[1] = np.clip(wage, 0.0, HUGE_FLOAT)
+    wages = np.exp(np.diag(covs.dot(np.vstack((coeffs_a[:12], coeffs_b[:12])).T)))
+
+    wages = fr.clip(wages, 0.0, 1000000.0)
 
     # We need to add the type-specific deviations here as these are part of
     # skill-function component.
-    wages[:2] = wages[:2] * np.exp(optim_paras["type_shifts"][covariates["type"], :2])
+    wages = wages * np.exp(type_shifts[covariates.type, :2])
 
     return wages

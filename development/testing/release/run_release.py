@@ -2,22 +2,20 @@
 """ This script allows to test alternative releases against each other that are supposed to lead
 to the same results for selected requests.
 """
-from datetime import timedelta
-from datetime import datetime
-
-import pickle as pkl
-import numpy as np
-
-import subprocess
 import argparse
-import random
 import os
+import pickle as pkl
+import random
+import subprocess
+from datetime import datetime
+from datetime import timedelta
+
+import numpy as np
+from auxiliary_release import prepare_release_tests
+from auxiliary_shared import cleanup
+from auxiliary_shared import send_notification
 
 from respy import RespyCls
-
-from auxiliary_release import prepare_release_tests
-from auxiliary_shared import send_notification
-from auxiliary_shared import cleanup
 
 SCRIPT_FNAME = "../../modules/auxiliary_release.py"
 

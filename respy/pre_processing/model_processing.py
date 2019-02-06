@@ -11,22 +11,24 @@ additional derived information in a structure that is helpful for further
 usage in RespyCLS.
 
 """
-import numpy as np
 import shlex
-from respy.python.shared.shared_constants import OPT_EST_FORT
-from respy.python.shared.shared_constants import OPT_EST_PYTH
-from respy.python.shared.shared_auxiliary import cholesky_to_coeffs
-from respy.python.shared.shared_auxiliary import format_opt_parameters
-from respy.python.shared.shared_auxiliary import coeffs_to_cholesky
-from respy.python.shared.shared_auxiliary import paras_parsing_information
-from respy.pre_processing.model_processing_auxiliary import _process_coefficient_line
-from respy.pre_processing.model_processing_auxiliary import _type_conversions
+
+import numpy as np
+
 from respy.pre_processing.model_processing_auxiliary import _add_to_dictionary
 from respy.pre_processing.model_processing_auxiliary import _determine_case
-from respy.pre_processing.model_processing_auxiliary import _paras_mapping
 from respy.pre_processing.model_processing_auxiliary import (
     _num_types_from_len_type_share_coeffs,
 )
+from respy.pre_processing.model_processing_auxiliary import _paras_mapping
+from respy.pre_processing.model_processing_auxiliary import _process_coefficient_line
+from respy.pre_processing.model_processing_auxiliary import _type_conversions
+from respy.python.shared.shared_auxiliary import cholesky_to_coeffs
+from respy.python.shared.shared_auxiliary import coeffs_to_cholesky
+from respy.python.shared.shared_auxiliary import format_opt_parameters
+from respy.python.shared.shared_auxiliary import paras_parsing_information
+from respy.python.shared.shared_constants import OPT_EST_FORT
+from respy.python.shared.shared_constants import OPT_EST_PYTH
 
 
 def read_init_file(fname):

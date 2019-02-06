@@ -1,27 +1,31 @@
-from scipy.optimize import fmin_l_bfgs_b
-from scipy.optimize import approx_fprime
-from scipy.optimize import fmin_powell
-from scipy.optimize import fmin_bfgs
-
 from math import floor
 from math import log10
-import numpy as np
 
+import numpy as np
+from scipy.optimize import approx_fprime
+from scipy.optimize import fmin_bfgs
+from scipy.optimize import fmin_l_bfgs_b
+from scipy.optimize import fmin_powell
+
+from respy.custom_exceptions import MaxfunError
+from respy.python.estimate.estimate_wrapper import OptimizationClass
+from respy.python.record.record_estimation import record_estimation_final
 from respy.python.record.record_estimation import record_estimation_scalability
 from respy.python.record.record_estimation import record_estimation_scaling
-from respy.python.record.record_estimation import record_estimation_final
 from respy.python.record.record_estimation import record_estimation_stop
-from respy.python.solve.solve_auxiliary import pyth_create_state_space
-from respy.python.shared.shared_auxiliary import dist_class_attributes
-from respy.python.estimate.estimate_wrapper import OptimizationClass
-from respy.python.shared.shared_auxiliary import get_num_obs_agent
-from respy.python.shared.shared_auxiliary import get_optim_paras
-from respy.python.simulate.simulate_python import pyth_simulate
 from respy.python.shared.shared_auxiliary import apply_scaling
 from respy.python.shared.shared_auxiliary import create_draws
+from respy.python.shared.shared_auxiliary import dist_class_attributes
+from respy.python.shared.shared_auxiliary import get_num_obs_agent
+from respy.python.shared.shared_auxiliary import get_optim_paras
 from respy.python.shared.shared_constants import HUGE_FLOAT
+from respy.python.simulate.simulate_python import pyth_simulate
+from respy.python.solve.solve_auxiliary import pyth_create_state_space
 from respy.python.solve.solve_python import pyth_solve
-from respy.custom_exceptions import MaxfunError
+from respy.python.shared.data_classes import (
+    education_specification,
+    optimization_parameters,
+)
 
 
 def respy_interface(respy_obj, request, data_array=None):
@@ -75,6 +79,9 @@ def respy_interface(respy_obj, request, data_array=None):
         "num_paras",
         "num_agents_est",
     )
+
+    edu_spec = education_specification(**edu_spec)
+    optim_paras = optimization_parameters(**optim_paras)
 
     if request == "estimate":
 
@@ -133,12 +140,12 @@ def respy_interface(respy_obj, request, data_array=None):
         # accounted for. Note, that the relevant value of the criterion function is
         # always the one indicated by the class attribute and not the value returned by
         # the optimization algorithm.
-        num_free = optim_paras["paras_fixed"].count(False)
+        num_free = optim_paras.paras_fixed.count(False)
 
         paras_bounds_free_unscaled = []
         for i in range(num_paras):
-            if not optim_paras["paras_fixed"][i]:
-                lower, upper = optim_paras["paras_bounds"][i][:]
+            if not optim_paras.paras_fixed[i]:
+                lower, upper = optim_paras.paras_bounds[i][:]
                 if lower is None:
                     lower = -HUGE_FLOAT
                 else:
@@ -154,12 +161,7 @@ def respy_interface(respy_obj, request, data_array=None):
         paras_bounds_free_unscaled = np.array(paras_bounds_free_unscaled)
 
         record_estimation_scaling(
-            x_optim_free_unscaled_start,
-            None,
-            None,
-            None,
-            optim_paras["paras_fixed"],
-            True,
+            x_optim_free_unscaled_start, None, None, None, optim_paras.paras_fixed, True
         )
 
         precond_matrix = get_precondition_matrix(
@@ -187,13 +189,13 @@ def respy_interface(respy_obj, request, data_array=None):
             x_optim_free_scaled_start,
             paras_bounds_free_scaled,
             precond_matrix,
-            optim_paras["paras_fixed"],
+            optim_paras.paras_fixed,
             False,
         )
 
         opt_obj = OptimizationClass(
             x_optim_all_unscaled_start,
-            optim_paras["paras_fixed"],
+            optim_paras.paras_fixed,
             precond_matrix,
             num_types,
         )
@@ -305,6 +307,8 @@ def respy_interface(respy_obj, request, data_array=None):
 
     elif request == "simulate":
 
+        # TODO: Replace optim_paras with new namedtuple class.
+
         # Draw draws for the simulation.
         periods_draws_sims = create_draws(
             num_periods, num_agents_sim, seed_sim, is_debug
@@ -381,16 +385,13 @@ def get_precondition_matrix(
     """ Get the preconditioning matrix for the optimization.
     """
     # Auxiliary objects
-    num_free = optim_paras["paras_fixed"].count(False)
+    num_free = optim_paras.paras_fixed.count(False)
 
     # Set up a special instance of the optimization class.
     precond_matrix = np.identity(num_free)
 
     opt_obj = OptimizationClass(
-        x_optim_all_unscaled_start,
-        optim_paras["paras_fixed"],
-        precond_matrix,
-        num_types,
+        x_optim_all_unscaled_start, optim_paras.paras_fixed, precond_matrix, num_types
     )
 
     opt_obj.is_scaling = False
@@ -404,7 +405,7 @@ def get_precondition_matrix(
     # approximation of the gradient.
     x_optim_free_unscaled_start = []
     for i in range(num_paras):
-        if not optim_paras["paras_fixed"][i]:
+        if not optim_paras.paras_fixed[i]:
             x_optim_free_unscaled_start += [x_optim_all_unscaled_start[i]]
 
     if precond_type == "identity" or maxfun == 0:

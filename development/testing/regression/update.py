@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 """ This script allows to update the regression tests.
 """
-
-import subprocess
 import argparse
 import shutil
+import subprocess
 import sys
 
 from auxiliary_shared import cleanup
