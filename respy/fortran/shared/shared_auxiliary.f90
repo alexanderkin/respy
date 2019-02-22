@@ -1477,7 +1477,7 @@ FUNCTION construct_covariates(exp_a, exp_b, edu, choice_lagged, type_, period) R
     covariates%is_adult = TRANSFER(period .GE. 6, our_int)
 
     covariates%is_mandatory = TRANSFER(edu .LT. 9, our_int)
-    covariates%co_graduate = TRANSFER(edu .GE. 15, our_int)
+    covariates%co_graduate = TRANSFER(edu .GE. 16, our_int)
     covariates%hs_graduate = TRANSFER(edu .GE. 12, our_int)
 
     hs_graduate = covariates%hs_graduate
