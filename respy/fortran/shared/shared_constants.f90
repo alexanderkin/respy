@@ -44,6 +44,9 @@ MODULE shared_constants
     INTEGER(our_int)            :: min_idx
     INTEGER(our_int)            :: num_rows
 
+    ! TODO: This needs to be integrated in the new NORPY specification file.
+    INTEGER(our_int)            :: start_age
+
     !Define a type to emulate the dictionary that holds the information to parse the parameter vector
     TYPE START_STOP
 

@@ -1050,6 +1050,9 @@ SUBROUTINE read_specification(optim_paras, tau, seed_sim, seed_emax, seed_prob, 
     num_slaves = num_procs - 1
     min_idx = edu_spec%max + 1
 
+    ! TODO: This needs to be integrated in the new NORPY initialization file.
+    start_age = 17
+
 END SUBROUTINE
 !******************************************************************************
 !******************************************************************************
@@ -1447,6 +1450,7 @@ FUNCTION construct_covariates(exp_a, exp_b, edu, choice_lagged, type_, period) R
 
     INTEGER(our_int)                :: hs_graduate
     INTEGER(our_int)                :: edu_lagged
+    INTEGER(our_int)                :: age
 
     LOGICAL                         :: cond
 
@@ -1472,9 +1476,12 @@ FUNCTION construct_covariates(exp_a, exp_b, edu, choice_lagged, type_, period) R
     covariates%any_exp_a = TRANSFER(exp_a .GT. 0, our_int)
     covariates%any_exp_b = TRANSFER(exp_b .GT. 0, our_int)
 
-    covariates%is_minor = TRANSFER(period .LT. 3, our_int)
-    covariates%is_young_adult = TRANSFER(((period .GE. 3) .AND. (period .LT. 6)), our_int)
-    covariates%is_adult = TRANSFER(period .GE. 6, our_int)
+    ! TODO: This is a short term fix as we play with different cohorts.
+    age = start_age + period
+
+    covariates%is_minor = TRANSFER(age .LT. 18, our_int)
+    covariates%is_young_adult = TRANSFER(((age .GE. 18) .AND. (age .LT. 21)), our_int)
+    covariates%is_adult = TRANSFER(age .GE. 21, our_int)
 
     covariates%is_mandatory = TRANSFER(edu .LT. 9, our_int)
     covariates%co_graduate = TRANSFER(edu .GE. 16, our_int)
